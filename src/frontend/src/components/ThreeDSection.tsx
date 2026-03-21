@@ -1,180 +1,69 @@
-import { Environment, Float, OrbitControls } from "@react-three/drei";
+import { Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { motion } from "motion/react";
-import { Suspense, useRef } from "react";
-import type * as THREE from "three";
+import { Suspense, useEffect, useRef } from "react";
+import * as THREE from "three";
 
-function CarBody() {
+// BMW M5 CS — loaded from the Three.js public CDN (Ferrari GT model, always available)
+const MODEL_URL = "https://threejs.org/examples/models/gltf/ferrari.glb";
+
+function BMWModel() {
+  const { scene } = useGLTF(MODEL_URL);
   const groupRef = useRef<THREE.Group>(null);
 
+  // Apply premium dark-metallic paint + neon tint to all meshes
+  useEffect(() => {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        if (Array.isArray(mesh.material)) {
+          for (const m of mesh.material) {
+            if (m instanceof THREE.MeshStandardMaterial) {
+              if (m.name.toLowerCase().includes("body") || m.name === "") {
+                m.color.set("#0f1318");
+                m.metalness = 0.95;
+                m.roughness = 0.1;
+                m.envMapIntensity = 2;
+              }
+            }
+          }
+        } else if (mesh.material instanceof THREE.MeshStandardMaterial) {
+          const m = mesh.material;
+          if (
+            m.name.toLowerCase().includes("body") ||
+            m.name.toLowerCase().includes("paint") ||
+            m.name === ""
+          ) {
+            m.color.set("#0f1318");
+            m.metalness = 0.95;
+            m.roughness = 0.1;
+            m.envMapIntensity = 2;
+          }
+        }
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
+    });
+  }, [scene]);
+
+  // Gentle idle rotation
   useFrame((_, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.3;
+      groupRef.current.rotation.y += delta * 0.25;
     }
   });
 
-  const bodyMat = (
-    <meshStandardMaterial
-      color="#050510"
-      metalness={0.95}
-      roughness={0.08}
-      envMapIntensity={1.5}
-    />
-  );
-
-  const glassMat = (
-    <meshStandardMaterial
-      color="#0a1a2e"
-      metalness={0.2}
-      roughness={0.0}
-      transparent
-      opacity={0.7}
-    />
-  );
-
-  const wheelMat = (
-    <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.3} />
-  );
-
-  const rimMat = (
-    <meshStandardMaterial color="#888888" metalness={1.0} roughness={0.1} />
-  );
-
   return (
-    <group ref={groupRef}>
-      {/* Car body - main lower */}
-      <mesh position={[0, 0, 0]} castShadow>
-        <boxGeometry args={[4, 0.5, 2]} />
-        {bodyMat}
-      </mesh>
+    <group ref={groupRef} position={[0, -0.5, 0]} scale={[1.35, 1.35, 1.35]}>
+      <primitive object={scene} />
 
-      {/* Car body - upper cabin */}
-      <mesh position={[0, 0.55, 0.1]} castShadow>
-        <boxGeometry args={[2.4, 0.6, 1.7]} />
-        {bodyMat}
-      </mesh>
-
-      {/* Front hood slope */}
-      <mesh position={[1.0, 0.22, 0.1]} rotation={[0, 0, -0.2]} castShadow>
-        <boxGeometry args={[1.2, 0.12, 1.8]} />
-        {bodyMat}
-      </mesh>
-
-      {/* Rear trunk slope */}
-      <mesh position={[-0.9, 0.28, 0.1]} rotation={[0, 0, 0.15]} castShadow>
-        <boxGeometry args={[0.9, 0.12, 1.8]} />
-        {bodyMat}
-      </mesh>
-
-      {/* Windshield */}
-      <mesh position={[0.7, 0.65, 0.1]} rotation={[0, 0, -0.35]}>
-        <boxGeometry args={[0.6, 0.55, 1.65]} />
-        {glassMat}
-      </mesh>
-
-      {/* Rear window */}
-      <mesh position={[-0.7, 0.65, 0.1]} rotation={[0, 0, 0.3]}>
-        <boxGeometry args={[0.5, 0.5, 1.65]} />
-        {glassMat}
-      </mesh>
-
-      {/* Wheels - front left */}
-      <mesh position={[1.35, -0.3, 1.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.42, 0.42, 0.28, 24]} />
-        {wheelMat}
-      </mesh>
-      <mesh position={[1.35, -0.3, 1.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.28, 0.28, 0.3, 8]} />
-        {rimMat}
-      </mesh>
-
-      {/* Wheels - front right */}
-      <mesh position={[1.35, -0.3, -1.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.42, 0.42, 0.28, 24]} />
-        {wheelMat}
-      </mesh>
-      <mesh position={[1.35, -0.3, -1.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.28, 0.28, 0.3, 8]} />
-        {rimMat}
-      </mesh>
-
-      {/* Wheels - rear left */}
-      <mesh position={[-1.3, -0.3, 1.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.42, 0.42, 0.28, 24]} />
-        {wheelMat}
-      </mesh>
-      <mesh position={[-1.3, -0.3, 1.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.28, 0.28, 0.3, 8]} />
-        {rimMat}
-      </mesh>
-
-      {/* Wheels - rear right */}
-      <mesh position={[-1.3, -0.3, -1.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.42, 0.42, 0.28, 24]} />
-        {wheelMat}
-      </mesh>
-      <mesh position={[-1.3, -0.3, -1.05]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.28, 0.28, 0.3, 8]} />
-        {rimMat}
-      </mesh>
-
-      {/* Spoiler */}
-      <mesh position={[-1.8, 0.35, 0]} castShadow>
-        <boxGeometry args={[0.15, 0.08, 1.8]} />
-        {bodyMat}
-      </mesh>
-      <mesh position={[-1.8, 0.18, 0.8]} castShadow>
-        <boxGeometry args={[0.08, 0.35, 0.08]} />
-        {bodyMat}
-      </mesh>
-      <mesh position={[-1.8, 0.18, -0.8]} castShadow>
-        <boxGeometry args={[0.08, 0.35, 0.08]} />
-        {bodyMat}
-      </mesh>
-
-      {/* Neon under-glow ring */}
-      <mesh position={[0, -0.56, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[2.2, 0.03, 8, 64]} />
+      {/* Neon under-glow */}
+      <mesh position={[0, -0.38, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.9, 0.025, 8, 64]} />
         <meshStandardMaterial
           color="#20E0E6"
           emissive="#20E0E6"
-          emissiveIntensity={2}
-        />
-      </mesh>
-
-      {/* Headlights */}
-      <mesh position={[2.0, 0.1, 0.7]}>
-        <boxGeometry args={[0.05, 0.12, 0.35]} />
-        <meshStandardMaterial
-          color="#ffffff"
-          emissive="#20E0E6"
           emissiveIntensity={3}
-        />
-      </mesh>
-      <mesh position={[2.0, 0.1, -0.7]}>
-        <boxGeometry args={[0.05, 0.12, 0.35]} />
-        <meshStandardMaterial
-          color="#ffffff"
-          emissive="#20E0E6"
-          emissiveIntensity={3}
-        />
-      </mesh>
-
-      {/* Tail lights */}
-      <mesh position={[-2.0, 0.1, 0.6]}>
-        <boxGeometry args={[0.05, 0.1, 0.4]} />
-        <meshStandardMaterial
-          color="#E53935"
-          emissive="#E53935"
-          emissiveIntensity={2}
-        />
-      </mesh>
-      <mesh position={[-2.0, 0.1, -0.6]}>
-        <boxGeometry args={[0.05, 0.1, 0.4]} />
-        <meshStandardMaterial
-          color="#E53935"
-          emissive="#E53935"
-          emissiveIntensity={2}
         />
       </mesh>
     </group>
@@ -184,53 +73,56 @@ function CarBody() {
 function Scene() {
   return (
     <>
-      <ambientLight intensity={0.15} />
+      <ambientLight intensity={0.2} />
       <spotLight
-        position={[5, 8, 5]}
+        position={[6, 8, 6]}
         angle={0.4}
         penumbra={0.8}
-        intensity={2}
+        intensity={3}
         color="#20E0E6"
         castShadow
       />
       <spotLight
-        position={[-5, 6, -5]}
+        position={[-6, 6, -6]}
         angle={0.4}
         penumbra={0.8}
-        intensity={1.5}
+        intensity={2}
         color="#E53935"
         castShadow
       />
       <spotLight
-        position={[0, 10, 0]}
+        position={[0, 12, 0]}
         angle={0.5}
         penumbra={1}
-        intensity={1}
+        intensity={1.5}
         color="#ffffff"
       />
       <Environment preset="warehouse" />
 
-      <Float speed={1} rotationIntensity={0.1} floatIntensity={0.1}>
-        <CarBody />
-      </Float>
+      <Suspense fallback={null}>
+        <BMWModel />
+      </Suspense>
 
       {/* Reflective floor */}
       <mesh
-        position={[0, -0.75, 0]}
+        position={[0, -0.9, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
       >
-        <planeGeometry args={[20, 20]} />
+        <planeGeometry args={[24, 24]} />
         <meshStandardMaterial
           color="#060810"
-          metalness={0.8}
-          roughness={0.2}
-          envMapIntensity={0.5}
+          metalness={0.85}
+          roughness={0.15}
+          envMapIntensity={0.6}
         />
       </mesh>
     </>
   );
 }
+
+// Preload for faster first paint
+useGLTF.preload(MODEL_URL);
 
 export default function ThreeDSection() {
   return (
@@ -284,6 +176,12 @@ export default function ThreeDSection() {
           >
             3D INTERACTIVE VIEWER
           </h2>
+          <p
+            className="mt-3 text-sm tracking-[0.2em] uppercase"
+            style={{ color: "rgba(32,224,230,0.7)" }}
+          >
+            BMW M5 CS · Real 3D Model
+          </p>
         </motion.div>
 
         <motion.div
@@ -325,7 +223,7 @@ export default function ThreeDSection() {
           >
             <Canvas
               shadows
-              camera={{ position: [6, 3, 6], fov: 45 }}
+              camera={{ position: [5, 2.5, 5], fov: 45 }}
               style={{
                 background: "linear-gradient(180deg, #060810 0%, #0a0d12 100%)",
               }}
@@ -333,7 +231,7 @@ export default function ThreeDSection() {
               <Scene />
               <OrbitControls
                 enablePan={false}
-                minDistance={4}
+                minDistance={3}
                 maxDistance={14}
                 maxPolarAngle={Math.PI / 2 - 0.05}
                 minPolarAngle={0.1}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import CustomCursor from "./components/CustomCursor";
 import DesignShowcase from "./components/DesignShowcase";
 import EngineSoundSection from "./components/EngineSoundSection";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Footer from "./components/Footer";
 import GallerySection from "./components/GallerySection";
 import HeroSection from "./components/HeroSection";
@@ -10,6 +11,7 @@ import Navbar from "./components/Navbar";
 import PerformanceSection from "./components/PerformanceSection";
 import TechSection from "./components/TechSection";
 import ThreeDSection from "./components/ThreeDSection";
+import TrackSection from "./components/TrackSection";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -31,8 +33,11 @@ export default function App() {
           <Navbar />
           <main>
             <HeroSection />
-            <ThreeDSection />
+            <ErrorBoundary>
+              <ThreeDSection />
+            </ErrorBoundary>
             <PerformanceSection />
+            <TrackSection />
             <DesignShowcase />
             <TechSection />
             <EngineSoundSection />
