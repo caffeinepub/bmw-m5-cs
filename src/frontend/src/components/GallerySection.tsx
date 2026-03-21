@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const galleryImages = [
   {
@@ -34,18 +34,28 @@ export default function GallerySection() {
   const [current, setCurrent] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [direction, setDirection] = useState(1);
-
+  const [isPaused, setIsPaused] = useState(false);
   const goNext = () => {
     setDirection(1);
     setCurrent((prev) => (prev + 1) % galleryImages.length);
   };
-
   const goPrev = () => {
     setDirection(-1);
     setCurrent(
       (prev) => (prev - 1 + galleryImages.length) % galleryImages.length,
     );
   };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional timer reset
+  useEffect(() => {
+    if (isPaused || lightbox) return;
+    const id = setInterval(() => {
+      setDirection(1);
+      setCurrent((prev) => (prev + 1) % galleryImages.length);
+    }, 4500);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaused, lightbox]);
 
   const img = galleryImages[current];
 
@@ -62,27 +72,8 @@ export default function GallerySection() {
           width: "900px",
           height: "500px",
           background:
-            "radial-gradient(ellipse, rgba(32,224,230,0.04) 0%, transparent 70%)",
+            "radial-gradient(ellipse, rgba(32,224,230,0.05) 0%, transparent 70%)",
           filter: "blur(60px)",
-        }}
-      />
-
-      {/* Top bleed */}
-      <div
-        className="absolute top-0 left-0 right-0 pointer-events-none"
-        style={{
-          height: "100px",
-          background: "linear-gradient(to bottom, #0B0F14, transparent)",
-          zIndex: 1,
-        }}
-      />
-      {/* Bottom bleed */}
-      <div
-        className="absolute bottom-0 left-0 right-0 pointer-events-none"
-        style={{
-          height: "120px",
-          background: "linear-gradient(to bottom, transparent, #0B0F14)",
-          zIndex: 1,
         }}
       />
 
@@ -129,6 +120,8 @@ export default function GallerySection() {
             boxShadow:
               "0 0 0 1px rgba(32,224,230,0.06), 0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(32,224,230,0.05)",
           }}
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
         >
           <div className="relative" style={{ aspectRatio: "16/9" }}>
             <AnimatePresence mode="wait" custom={direction}>
@@ -150,7 +143,7 @@ export default function GallerySection() {
                   className="absolute inset-0"
                   style={{
                     background:
-                      "linear-gradient(0deg, rgba(11,15,20,0.9) 0%, rgba(11,15,20,0.3) 35%, transparent 60%)",
+                      "linear-gradient(0deg, rgba(11,15,20,0.92) 0%, rgba(11,15,20,0.3) 35%, transparent 60%)",
                   }}
                 />
                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
@@ -186,17 +179,30 @@ export default function GallerySection() {
                 border: "1px solid rgba(32,224,230,0.35)",
                 color: "#20E0E6",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow =
-                  "0 0 12px rgba(32,224,230,0.5)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-              }}
               data-ocid="gallery.open_modal_button"
             >
               <Expand size={16} />
             </button>
+
+            {/* Auto-progress bar */}
+            {!isPaused && (
+              <div
+                className="absolute bottom-0 left-0 right-0 h-0.5"
+                style={{ backgroundColor: "rgba(32,224,230,0.1)" }}
+              >
+                <motion.div
+                  key={current}
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 4.5, ease: "linear" }}
+                  className="h-full"
+                  style={{
+                    background: "linear-gradient(90deg, #20E0E6, #00a8ff)",
+                    boxShadow: "0 0 6px #20E0E6",
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <div
@@ -216,19 +222,17 @@ export default function GallerySection() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = "rgba(32,224,230,0.08)";
-                e.currentTarget.style.boxShadow =
-                  "0 0 10px rgba(32,224,230,0.2)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.boxShadow = "none";
               }}
               data-ocid="gallery.pagination_prev"
             >
               <ChevronLeft size={16} /> PREV
             </button>
 
-            <div className="flex gap-2">
+            {/* Thumbnail strip */}
+            <div className="hidden md:flex gap-2">
               {galleryImages.map((gimg, i) => (
                 <button
                   type="button"
@@ -237,17 +241,47 @@ export default function GallerySection() {
                     setDirection(i > current ? 1 : -1);
                     setCurrent(i);
                   }}
-                  className="transition-all duration-300"
+                  className="relative rounded overflow-hidden transition-all duration-300"
+                  style={{
+                    width: i === current ? 72 : 48,
+                    height: 32,
+                    border:
+                      i === current
+                        ? "1px solid #20E0E6"
+                        : "1px solid rgba(32,224,230,0.15)",
+                    boxShadow:
+                      i === current ? "0 0 8px rgba(32,224,230,0.4)" : "none",
+                    opacity: i === current ? 1 : 0.5,
+                  }}
+                  data-ocid={`gallery.item.${i + 1}`}
+                >
+                  <img
+                    src={gimg.src}
+                    alt={gimg.title}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Dot strip for mobile */}
+            <div className="flex md:hidden gap-2">
+              {galleryImages.map((gimg, i) => (
+                <button
+                  type="button"
+                  key={gimg.title}
+                  onClick={() => {
+                    setDirection(i > current ? 1 : -1);
+                    setCurrent(i);
+                  }}
                   style={{
                     width: i === current ? "24px" : "6px",
                     height: "6px",
                     borderRadius: "3px",
                     backgroundColor:
                       i === current ? "#20E0E6" : "rgba(32,224,230,0.2)",
-                    boxShadow:
-                      i === current
-                        ? "0 0 8px #20E0E6, 0 0 16px rgba(32,224,230,0.4)"
-                        : "none",
+                    boxShadow: i === current ? "0 0 8px #20E0E6" : "none",
+                    transition: "all 0.3s",
                   }}
                   data-ocid={`gallery.item.${i + 1}`}
                 />
@@ -264,12 +298,9 @@ export default function GallerySection() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = "rgba(32,224,230,0.08)";
-                e.currentTarget.style.boxShadow =
-                  "0 0 10px rgba(32,224,230,0.2)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.boxShadow = "none";
               }}
               data-ocid="gallery.pagination_next"
             >
@@ -294,7 +325,7 @@ export default function GallerySection() {
               initial={{ scale: 0.88, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.88, opacity: 0 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
+              transition={{ duration: 0.35 }}
               className="relative max-w-6xl w-full mx-4"
               onClick={(e) => e.stopPropagation()}
             >
@@ -307,10 +338,21 @@ export default function GallerySection() {
                     "0 0 0 1px rgba(32,224,230,0.2), 0 0 60px rgba(32,224,230,0.15), 0 40px 100px rgba(0,0,0,0.8)",
                 }}
               />
+              <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
+                <h3
+                  className="font-rajdhani font-bold text-2xl tracking-wider"
+                  style={{ color: "#F2F5F7" }}
+                >
+                  {img.title}
+                </h3>
+                <p className="text-sm mt-1" style={{ color: "#7C8796" }}>
+                  {img.desc}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setLightbox(false)}
-                className="absolute -top-4 -right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200"
+                className="absolute -top-4 -right-4 w-10 h-10 rounded-full flex items-center justify-center"
                 style={{
                   backgroundColor: "#E53935",
                   color: "#fff",

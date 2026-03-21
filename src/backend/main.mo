@@ -1,9 +1,9 @@
 import List "mo:core/List";
 import Text "mo:core/Text";
 import Order "mo:core/Order";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   // --- Data Types ---
   type Comment = {

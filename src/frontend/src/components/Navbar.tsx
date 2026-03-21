@@ -1,4 +1,5 @@
-import { motion } from "motion/react";
+import { Menu, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 
 const navLinks = [
@@ -10,9 +11,21 @@ const navLinks = [
   { label: "GALLERY", href: "#gallery" },
 ];
 
+const SECTION_IDS = [
+  "hero",
+  "viewer",
+  "performance",
+  "track",
+  "design",
+  "tech",
+  "gallery",
+  "book-test-drive",
+];
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("hero");
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -20,11 +33,32 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+    for (const id of SECTION_IDS) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection(id);
+        },
+        { threshold: 0.3 },
+      );
+      obs.observe(el);
+      observers.push(obs);
+    }
+    return () => {
+      for (const o of observers) o.disconnect();
+    };
+  }, []);
+
   const scrollTo = (href: string) => {
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
     setMobileOpen(false);
   };
+
+  const isActive = (href: string) => activeSection === href.replace("#", "");
 
   return (
     <motion.nav
@@ -34,7 +68,7 @@ export default function Navbar() {
       className="fixed top-0 left-0 right-0 z-[100]"
       style={{
         background: scrolled
-          ? "rgba(11, 15, 20, 0.92)"
+          ? "rgba(11, 15, 20, 0.94)"
           : "rgba(11, 15, 20, 0.5)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
@@ -48,12 +82,16 @@ export default function Navbar() {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 group"
           data-ocid="nav.link"
         >
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-rajdhani"
-            style={{ border: "1.5px solid #20E0E6", color: "#20E0E6" }}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-rajdhani transition-all duration-300 group-hover:scale-110"
+            style={{
+              border: "1.5px solid #20E0E6",
+              color: "#20E0E6",
+              boxShadow: "0 0 10px rgba(32,224,230,0.3)",
+            }}
           >
             M
           </div>
@@ -67,20 +105,32 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => (
-            <button
-              type="button"
-              key={link.label}
-              onClick={() => scrollTo(link.href)}
-              className="text-xs font-semibold tracking-[0.15em] transition-colors duration-200 hover:text-white"
-              style={{ color: "#7C8796" }}
-              data-ocid="nav.link"
-            >
-              {link.label}
-            </button>
-          ))}
+          {navLinks.map((link) => {
+            const active = isActive(link.href);
+            return (
+              <button
+                type="button"
+                key={link.label}
+                onClick={() => scrollTo(link.href)}
+                className="relative text-xs font-semibold tracking-[0.15em] transition-all duration-200"
+                style={{ color: active ? "#20E0E6" : "#7C8796" }}
+                data-ocid="nav.link"
+              >
+                {link.label}
+                {active && (
+                  <motion.div
+                    layoutId="nav-indicator"
+                    className="absolute -bottom-1 left-0 right-0 h-px"
+                    style={{
+                      background: "#20E0E6",
+                      boxShadow: "0 0 6px #20E0E6",
+                    }}
+                  />
+                )}
+              </button>
+            );
+          })}
 
-          {/* Book Test Drive CTA */}
           <button
             type="button"
             onClick={() => scrollTo("#book-test-drive")}
@@ -91,6 +141,14 @@ export default function Navbar() {
               color: "#00BFFF",
               boxShadow: "0 0 18px rgba(0,191,255,0.25)",
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = "0 0 28px rgba(0,191,255,0.5)";
+              e.currentTarget.style.background = "rgba(0,191,255,0.14)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = "0 0 18px rgba(0,191,255,0.25)";
+              e.currentTarget.style.background = "rgba(0,191,255,0.08)";
+            }}
             data-ocid="nav.primary_button"
           >
             BOOK TEST DRIVE
@@ -100,53 +158,90 @@ export default function Navbar() {
         {/* Mobile hamburger */}
         <button
           type="button"
-          className="md:hidden flex flex-col gap-1.5 p-2"
+          className="md:hidden p-2"
           onClick={() => setMobileOpen(!mobileOpen)}
           data-ocid="nav.toggle"
         >
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-5 h-0.5"
-              style={{ backgroundColor: "#20E0E6" }}
-            />
-          ))}
+          <AnimatePresence mode="wait">
+            {mobileOpen ? (
+              <motion.div
+                key="x"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <X size={22} style={{ color: "#20E0E6" }} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="menu"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Menu size={22} style={{ color: "#20E0E6" }} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </button>
       </div>
 
       {/* Mobile menu */}
-      {mobileOpen && (
-        <div
-          className="md:hidden px-6 pb-6 flex flex-col gap-4"
-          style={{ borderTop: "1px solid rgba(32,224,230,0.1)" }}
-        >
-          {navLinks.map((link) => (
-            <button
-              type="button"
-              key={link.label}
-              onClick={() => scrollTo(link.href)}
-              className="text-sm font-semibold tracking-widest text-left py-2"
-              style={{ color: "#7C8796" }}
-              data-ocid="nav.link"
-            >
-              {link.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => scrollTo("#book-test-drive")}
-            className="mt-2 px-5 py-2.5 rounded-full text-sm font-bold tracking-widest"
-            style={{
-              background: "rgba(0,191,255,0.08)",
-              border: "1.5px solid #00BFFF",
-              color: "#00BFFF",
-            }}
-            data-ocid="nav.primary_button"
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden overflow-hidden px-6 pb-6 flex flex-col gap-4"
+            style={{ borderTop: "1px solid rgba(32,224,230,0.1)" }}
           >
-            BOOK TEST DRIVE
-          </button>
-        </div>
-      )}
+            {navLinks.map((link, i) => (
+              <motion.button
+                key={link.label}
+                type="button"
+                onClick={() => scrollTo(link.href)}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="text-sm font-semibold tracking-widest text-left py-2 flex items-center gap-2"
+                style={{ color: isActive(link.href) ? "#20E0E6" : "#7C8796" }}
+                data-ocid="nav.link"
+              >
+                {isActive(link.href) && (
+                  <div
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      backgroundColor: "#20E0E6",
+                      boxShadow: "0 0 6px #20E0E6",
+                    }}
+                  />
+                )}
+                {link.label}
+              </motion.button>
+            ))}
+            <motion.button
+              type="button"
+              onClick={() => scrollTo("#book-test-drive")}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: navLinks.length * 0.05 }}
+              className="mt-2 px-5 py-2.5 rounded-full text-sm font-bold tracking-widest"
+              style={{
+                background: "rgba(0,191,255,0.08)",
+                border: "1.5px solid #00BFFF",
+                color: "#00BFFF",
+              }}
+              data-ocid="nav.primary_button"
+            >
+              BOOK TEST DRIVE
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
   );
 }
