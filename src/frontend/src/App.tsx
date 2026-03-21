@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import BookTestDriveSection from "./components/BookTestDriveSection";
 import CustomCursor from "./components/CustomCursor";
 import DesignShowcase from "./components/DesignShowcase";
 import EngineSoundSection from "./components/EngineSoundSection";
@@ -42,6 +43,7 @@ export default function App() {
             <TechSection />
             <EngineSoundSection />
             <GallerySection />
+            <BookTestDriveSection />
           </main>
           <Footer />
         </>

@@ -89,18 +89,42 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface Booking {
+    name: string;
+    email: string;
+    message: string;
+    preferredDate: string;
+    preferredTime: string;
+    phone: string;
+}
 export interface Comment {
     name: string;
     message: string;
 }
 export interface backendInterface {
+    getAllBookings(): Promise<Array<Booking>>;
     getAllComments(): Promise<Array<Comment>>;
     getVisitorCount(): Promise<bigint>;
     incrementVisitorCount(): Promise<bigint>;
+    submitBooking(name: string, email: string, phone: string, preferredDate: string, preferredTime: string, message: string): Promise<void>;
     submitComment(name: string, message: string): Promise<void>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async getAllBookings(): Promise<Array<Booking>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllBookings();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllBookings();
+            return result;
+        }
+    }
     async getAllComments(): Promise<Array<Comment>> {
         if (this.processError) {
             try {
@@ -140,6 +164,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.incrementVisitorCount();
+            return result;
+        }
+    }
+    async submitBooking(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.submitBooking(arg0, arg1, arg2, arg3, arg4, arg5);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.submitBooking(arg0, arg1, arg2, arg3, arg4, arg5);
             return result;
         }
     }

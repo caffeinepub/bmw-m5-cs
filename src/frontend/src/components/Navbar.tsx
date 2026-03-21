@@ -65,7 +65,8 @@ export default function Navbar() {
           </span>
         </button>
 
-        <div className="hidden md:flex items-center gap-8">
+        {/* Desktop nav */}
+        <div className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
             <button
               type="button"
@@ -78,22 +79,25 @@ export default function Navbar() {
               {link.label}
             </button>
           ))}
+
+          {/* Book Test Drive CTA */}
+          <button
+            type="button"
+            onClick={() => scrollTo("#book-test-drive")}
+            className="flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300"
+            style={{
+              background: "rgba(0,191,255,0.08)",
+              border: "1.5px solid #00BFFF",
+              color: "#00BFFF",
+              boxShadow: "0 0 18px rgba(0,191,255,0.25)",
+            }}
+            data-ocid="nav.primary_button"
+          >
+            BOOK TEST DRIVE
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => scrollTo("#gallery")}
-          className="hidden md:flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold tracking-[0.15em] transition-all duration-200"
-          style={{
-            backgroundColor: "#E53935",
-            color: "#fff",
-            boxShadow: "0 0 15px rgba(229,57,53,0.4)",
-          }}
-          data-ocid="nav.primary_button"
-        >
-          BOOK TEST DRIVE
-        </button>
-
+        {/* Mobile hamburger */}
         <button
           type="button"
           className="md:hidden flex flex-col gap-1.5 p-2"
@@ -110,6 +114,7 @@ export default function Navbar() {
         </button>
       </div>
 
+      {/* Mobile menu */}
       {mobileOpen && (
         <div
           className="md:hidden px-6 pb-6 flex flex-col gap-4"
@@ -129,9 +134,13 @@ export default function Navbar() {
           ))}
           <button
             type="button"
-            onClick={() => scrollTo("#gallery")}
+            onClick={() => scrollTo("#book-test-drive")}
             className="mt-2 px-5 py-2.5 rounded-full text-sm font-bold tracking-widest"
-            style={{ backgroundColor: "#E53935", color: "#fff" }}
+            style={{
+              background: "rgba(0,191,255,0.08)",
+              border: "1.5px solid #00BFFF",
+              color: "#00BFFF",
+            }}
             data-ocid="nav.primary_button"
           >
             BOOK TEST DRIVE
