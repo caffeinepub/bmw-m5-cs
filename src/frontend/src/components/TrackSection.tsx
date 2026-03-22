@@ -1,11 +1,11 @@
-import { ChevronRight, ExternalLink, Play } from "lucide-react";
+import { ChevronRight, ExternalLink, Play, Youtube } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 const VIDEOS = [
   {
     id: "burnout",
-    youtubeId: "WfSE9tSlnps",
+    youtubeId: "obkLDeO58Wo",
     label: "Burnout & Drift",
     subtitle: "Raw Track Aggression",
     thumbnail: "/assets/generated/bmw-track-burnout.dim_1400x800.jpg",
@@ -15,7 +15,7 @@ const VIDEOS = [
   },
   {
     id: "drag",
-    youtubeId: "_-iKvn8eiaM",
+    youtubeId: "AFtUpMTs4vI",
     label: "Drag Race",
     subtitle: "Maximum Straight-Line Fury",
     thumbnail: "/assets/generated/bmw-track-drag.dim_1400x800.jpg",
@@ -25,7 +25,7 @@ const VIDEOS = [
   },
   {
     id: "review",
-    youtubeId: "QHSRNwBHE04",
+    youtubeId: "VMRsEg9FZYs",
     label: "Full Review",
     subtitle: "The Complete M Experience",
     thumbnail: "/assets/generated/bmw-track-review.dim_1400x800.jpg",
@@ -33,7 +33,19 @@ const VIDEOS = [
     desc: "The definitive walkthrough of the most driver-focused M5 ever produced — every detail examined, every system tested.",
     accent: "#20E0E6",
   },
+  {
+    id: "launch",
+    youtubeId: "tHQUODmWlpE",
+    label: "Launch Control",
+    subtitle: "Zero to Savage in 3.0s",
+    thumbnail: "/assets/generated/bmw-track-burnout.dim_1400x800.jpg",
+    tags: ["Launch Control", "M5 CS", "305 km/h"],
+    desc: "Launch control engaged. The M5 CS annihilates the quarter mile with surgical precision and savage acceleration.",
+    accent: "#E53935",
+  },
 ];
+
+const BMW_CANADA_URL = "https://www.youtube.com/@bmwcanada";
 
 export default function TrackSection() {
   const ref = useRef<HTMLDivElement>(null);
@@ -60,6 +72,10 @@ export default function TrackSection() {
       "_blank",
       "noopener,noreferrer",
     );
+  };
+
+  const openChannel = () => {
+    window.open(BMW_CANADA_URL, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -100,7 +116,7 @@ export default function TrackSection() {
           className="text-center mb-14"
         >
           <p
-            className="text-xs font-semibold tracking-[0.45em] uppercase mb-3 eyebrow-dot eyebrow-dot-cyan"
+            className="text-xs font-semibold tracking-[0.45em] uppercase mb-3"
             style={{ color: "#20E0E6" }}
           >
             Raw Power Unleashed
@@ -125,6 +141,27 @@ export default function TrackSection() {
                 "linear-gradient(90deg, transparent, #20E0E6, transparent)",
             }}
           />
+          {/* BMW Canada channel link */}
+          <motion.button
+            type="button"
+            onClick={openChannel}
+            initial={{ opacity: 0, y: 10 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.97 }}
+            className="inline-flex items-center gap-2 mt-5 px-5 py-2 rounded-full text-xs font-bold tracking-[0.2em] uppercase transition-all duration-300"
+            style={{
+              background: "rgba(255,0,0,0.08)",
+              border: "1px solid rgba(255,0,0,0.3)",
+              color: "#FF4444",
+              boxShadow: "0 0 15px rgba(255,0,0,0.1)",
+            }}
+          >
+            <Youtube size={14} />
+            BMW Canada on YouTube
+            <ExternalLink size={11} />
+          </motion.button>
         </motion.div>
 
         {/* Main featured card */}
@@ -179,7 +216,6 @@ export default function TrackSection() {
                       whileTap={{ scale: 0.95 }}
                       className="relative flex items-center justify-center"
                     >
-                      {/* Pulse rings */}
                       <div
                         className="absolute w-20 h-20 rounded-full animate-ping opacity-20"
                         style={{ backgroundColor: current.accent }}
@@ -228,7 +264,7 @@ export default function TrackSection() {
                       {current.subtitle}
                     </div>
                     <h3
-                      className="font-rajdhani font-bold text-3xl md:text-4xl tracking-wider mb-2"
+                      className="font-bold text-3xl md:text-4xl tracking-wider mb-2"
                       style={{ color: "#F2F5F7" }}
                     >
                       {current.label}
@@ -265,10 +301,10 @@ export default function TrackSection() {
             initial={{ opacity: 0, x: 40 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.9, delay: 0.2 }}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-3"
           >
             <p
-              className="text-xs tracking-[0.3em] font-semibold mb-2"
+              className="text-xs tracking-[0.3em] font-semibold mb-1"
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
               ALL VIDEOS
@@ -294,7 +330,6 @@ export default function TrackSection() {
                     opacity: isActive ? 1 : isHovered ? 0.85 : 0.6,
                   }}
                 >
-                  {/* Thumbnail strip */}
                   <div className="relative" style={{ aspectRatio: "16/9" }}>
                     <img
                       src={video.thumbnail}
@@ -308,7 +343,6 @@ export default function TrackSection() {
                           "linear-gradient(0deg, rgba(7,9,13,0.85) 0%, rgba(7,9,13,0.3) 60%, transparent 100%)",
                       }}
                     />
-                    {/* Small play */}
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -324,7 +358,6 @@ export default function TrackSection() {
                         />
                       </div>
                     </div>
-                    {/* Active badge */}
                     {isActive && (
                       <div
                         className="absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-bold tracking-wider"
@@ -363,7 +396,7 @@ export default function TrackSection() {
               onClick={() => openVideo(current.youtubeId)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold tracking-[0.2em] uppercase transition-all duration-300 mt-2"
+              className="flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold tracking-[0.2em] uppercase transition-all duration-300 mt-1"
               style={{
                 background: `${current.accent}12`,
                 border: `1px solid ${current.accent}40`,
@@ -373,6 +406,24 @@ export default function TrackSection() {
               <ExternalLink size={13} />
               OPEN ON YOUTUBE
               <ChevronRight size={13} />
+            </motion.button>
+
+            {/* BMW Canada channel */}
+            <motion.button
+              type="button"
+              onClick={openChannel}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300"
+              style={{
+                background: "rgba(255,0,0,0.06)",
+                border: "1px solid rgba(255,0,0,0.25)",
+                color: "#FF5555",
+              }}
+            >
+              <Youtube size={13} />
+              BMW CANADA CHANNEL
+              <ExternalLink size={11} />
             </motion.button>
           </motion.div>
         </div>
