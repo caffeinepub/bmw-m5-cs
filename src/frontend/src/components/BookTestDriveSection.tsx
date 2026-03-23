@@ -100,7 +100,7 @@ function NeonTextarea({
 }
 
 export default function BookTestDriveSection() {
-  const { actor } = useActor();
+  const { actor, isFetching: actorLoading } = useActor();
   const { isLoggedIn } = useAuth();
   const [form, setForm] = useState<FormData>({
     name: "",
@@ -494,7 +494,7 @@ export default function BookTestDriveSection() {
                 >
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || actorLoading || !actor}
                     className="w-full py-4 rounded-full font-bold tracking-[0.2em] uppercase text-sm transition-all duration-300 flex items-center justify-center gap-2"
                     style={{
                       background: loading

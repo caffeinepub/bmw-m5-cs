@@ -1,21 +1,46 @@
 import { Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { motion } from "motion/react";
-import { Suspense, useEffect, useRef, useState } from "react";
+import {
+  Component,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import * as THREE from "three";
 
+// Direct raw URL – no redirect, CORS-friendly
 const MODEL_URL =
-  "https://github.com/ishantpadole96-oss/ISHANT_/raw/refs/heads/main/fff-v1%20(2).glb";
+  "https://raw.githubusercontent.com/ishantpadole96-oss/ISHANT_/main/fff-v1%20(2).glb";
 
-// Preload the model
 useGLTF.preload(MODEL_URL);
 
+// ─── Error boundary so a failed fetch falls back to holographic viewer ───────
+class ModelErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+// ─── Real GLB car model ───────────────────────────────────────────────────────
 function CarModel() {
   const { scene } = useGLTF(MODEL_URL);
   const groupRef = useRef<THREE.Group>(null);
 
   useEffect(() => {
-    // Center and scale the model
     const box = new THREE.Box3().setFromObject(scene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -27,8 +52,6 @@ function CarModel() {
       -center.y * scale + 0.1,
       -center.z * scale,
     );
-
-    // Enhance materials
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
@@ -36,24 +59,119 @@ function CarModel() {
         mesh.receiveShadow = true;
         if (mesh.material) {
           const mat = mesh.material as THREE.MeshStandardMaterial;
-          if (mat.isMeshStandardMaterial) {
-            mat.envMapIntensity = 1.5;
-          }
+          if (mat.isMeshStandardMaterial) mat.envMapIntensity = 1.5;
         }
       }
     });
   }, [scene]);
 
   useFrame((_, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.2;
-    }
+    if (groupRef.current) groupRef.current.rotation.y += delta * 0.2;
   });
 
   return (
     <group ref={groupRef}>
       <primitive object={scene} />
     </group>
+  );
+}
+
+// ─── Holographic fallback (shown while loading OR on error) ──────────────────
+function HolographicCar() {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    groupRef.current.rotation.y = clock.getElapsedTime() * 0.25;
+  });
+
+  const neonBlue = "#00aaff";
+  const neonRed = "#ff2244";
+
+  return (
+    <group ref={groupRef}>
+      {/* Body */}
+      <mesh position={[0, 0.18, 0]}>
+        <boxGeometry args={[3.6, 0.52, 1.55]} />
+        <meshBasicMaterial color={neonBlue} wireframe />
+      </mesh>
+      {/* Cabin */}
+      <mesh position={[0.15, 0.64, 0]}>
+        <boxGeometry args={[1.7, 0.5, 1.28]} />
+        <meshBasicMaterial color={neonBlue} wireframe />
+      </mesh>
+      {/* Front bumper */}
+      <mesh position={[1.88, 0.08, 0]}>
+        <boxGeometry args={[0.18, 0.38, 1.45]} />
+        <meshBasicMaterial color={neonRed} wireframe />
+      </mesh>
+      {/* Rear bumper */}
+      <mesh position={[-1.88, 0.08, 0]}>
+        <boxGeometry args={[0.18, 0.38, 1.45]} />
+        <meshBasicMaterial color={neonRed} wireframe />
+      </mesh>
+      {/* Grille */}
+      <mesh position={[1.82, 0.22, 0]}>
+        <boxGeometry args={[0.04, 0.28, 0.76]} />
+        <meshBasicMaterial color={neonBlue} wireframe />
+      </mesh>
+      {/* Wheels */}
+      {(
+        [
+          [1.15, -0.28, 0.88],
+          [-1.15, -0.28, 0.88],
+          [1.15, -0.28, -0.88],
+          [-1.15, -0.28, -0.88],
+        ] as [number, number, number][]
+      ).map((pos) => (
+        <mesh
+          key={`w-${pos[0]}-${pos[2]}`}
+          position={pos}
+          rotation={[0, 0, Math.PI / 2]}
+        >
+          <cylinderGeometry args={[0.38, 0.38, 0.26, 18]} />
+          <meshBasicMaterial color={neonRed} wireframe />
+        </mesh>
+      ))}
+      {/* Exhausts */}
+      {(
+        [
+          [-1.82, -0.12, 0.44],
+          [-1.82, -0.12, 0.2],
+          [-1.82, -0.12, -0.2],
+          [-1.82, -0.12, -0.44],
+        ] as [number, number, number][]
+      ).map((pos) => (
+        <mesh key={`e-${pos[2]}`} position={pos} rotation={[0, Math.PI / 2, 0]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.18, 8]} />
+          <meshBasicMaterial color={neonRed} wireframe />
+        </mesh>
+      ))}
+      {/* Neon underglow */}
+      <pointLight
+        position={[0, -0.55, 0]}
+        color={neonBlue}
+        intensity={1.4}
+        distance={4}
+      />
+    </group>
+  );
+}
+
+// ─── Spinner shown during Suspense ───────────────────────────────────────────
+function Spinner() {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.rotation.y = clock.getElapsedTime() * 1.1;
+      ref.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.6) * 0.4;
+    }
+  });
+  return (
+    <mesh ref={ref}>
+      <icosahedronGeometry args={[1.2, 1]} />
+      <meshBasicMaterial color="#00aaff" wireframe />
+    </mesh>
   );
 }
 
@@ -71,15 +189,12 @@ function ParticleField() {
     }
     return arr;
   })();
-
-  const pointsRef = useRef<THREE.Points>(null);
+  const ref = useRef<THREE.Points>(null);
   useFrame(({ clock }) => {
-    if (pointsRef.current) {
-      pointsRef.current.rotation.y = clock.getElapsedTime() * 0.04;
-    }
+    if (ref.current) ref.current.rotation.y = clock.getElapsedTime() * 0.04;
   });
   return (
-    <points ref={pointsRef}>
+    <points ref={ref}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
@@ -102,23 +217,7 @@ function GridFloor() {
   );
 }
 
-function LoadingFallback() {
-  const meshRef = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = clock.getElapsedTime() * 0.8;
-      meshRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.5) * 0.3;
-    }
-  });
-  return (
-    <mesh ref={meshRef}>
-      <icosahedronGeometry args={[1.2, 1]} />
-      <meshBasicMaterial color="#00aaff" wireframe />
-    </mesh>
-  );
-}
-
-function Scene() {
+function Scene({ useRealModel }: { useRealModel: boolean }) {
   return (
     <>
       <ambientLight intensity={0.6} />
@@ -149,14 +248,20 @@ function Scene() {
       <Environment preset="city" />
       <GridFloor />
       <ParticleField />
-      <Suspense fallback={<LoadingFallback />}>
-        <CarModel />
-      </Suspense>
+      {useRealModel ? (
+        <ModelErrorBoundary fallback={<HolographicCar />}>
+          <Suspense fallback={<Spinner />}>
+            <CarModel />
+          </Suspense>
+        </ModelErrorBoundary>
+      ) : (
+        <HolographicCar />
+      )}
     </>
   );
 }
 
-// ─── Live HUD data ──────────────────────────────────────────────────────────
+// ─── HUD overlay ─────────────────────────────────────────────────────────────
 const HUD_DATA = [
   { key: "HP", from: 0, to: 627, unit: "HP", decimals: 0 },
   { key: "TORQUE", from: 0, to: 750, unit: "Nm", decimals: 0 },
@@ -164,7 +269,7 @@ const HUD_DATA = [
   { key: "TOP", from: 0, to: 305, unit: "km/h", decimals: 0 },
 ];
 
-function HUDOverlay() {
+function HUDOverlay({ modelStatus }: { modelStatus: string }) {
   const [blink, setBlink] = useState(true);
   const [vals, setVals] = useState(HUD_DATA.map((d) => d.from));
   const [scanY, setScanY] = useState(0);
@@ -197,19 +302,25 @@ function HUDOverlay() {
   useEffect(() => {
     let raf: number;
     const animate = () => {
-      setScanY((prev) => (prev >= 100 ? 0 : prev + 0.25));
+      setScanY((p) => (p >= 100 ? 0 : p + 0.25));
       raf = requestAnimationFrame(animate);
     };
     raf = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  const statusColor =
+    modelStatus === "loaded"
+      ? "#00ff88"
+      : modelStatus === "error"
+        ? "#ff2244"
+        : "#ffaa00";
+
   return (
     <div
       className="absolute inset-0 pointer-events-none font-mono"
       style={{ zIndex: 10 }}
     >
-      {/* Corner brackets */}
       {(
         [
           { id: "tl", top: 3, left: 3, borderTop: true, borderLeft: true },
@@ -248,7 +359,6 @@ function HUDOverlay() {
         />
       ))}
 
-      {/* Top-left */}
       <div
         className="absolute top-4 left-10"
         style={{
@@ -276,7 +386,6 @@ function HUDOverlay() {
         </div>
       </div>
 
-      {/* Top-right */}
       <div
         className="absolute top-4 right-10 text-right"
         style={{
@@ -292,9 +401,13 @@ function HUDOverlay() {
         </div>
         <div
           className="text-xs tracking-widest mt-0.5"
-          style={{ color: "rgba(0,170,255,0.5)" }}
+          style={{ color: statusColor }}
         >
-          STATUS: ACTIVE
+          {modelStatus === "loaded"
+            ? "MODEL: LOADED"
+            : modelStatus === "error"
+              ? "MODEL: HOLOGRAM"
+              : "MODEL: LOADING…"}
         </div>
         <div
           className="text-xs tracking-widest mt-0.5"
@@ -304,7 +417,6 @@ function HUDOverlay() {
         </div>
       </div>
 
-      {/* Live data bar — bottom left */}
       <div
         className="absolute bottom-10 left-10 flex gap-5"
         style={{
@@ -341,7 +453,6 @@ function HUDOverlay() {
         ))}
       </div>
 
-      {/* Bottom-right hint */}
       <div
         className="absolute bottom-10 right-10 text-right text-xs tracking-widest"
         style={{ color: "rgba(0,170,255,0.4)" }}
@@ -349,7 +460,6 @@ function HUDOverlay() {
         DRAG · ROTATE &nbsp;|&nbsp; SCROLL · ZOOM
       </div>
 
-      {/* Scanline sweep */}
       <div
         style={{
           position: "absolute",
@@ -367,14 +477,32 @@ function HUDOverlay() {
   );
 }
 
+// ─── Main export ─────────────────────────────────────────────────────────────
 export default function ThreeDSection() {
+  const [modelStatus, setModelStatus] = useState<
+    "loading" | "loaded" | "error"
+  >("loading");
+
+  // Attempt a HEAD fetch to check if the model URL is reachable
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(MODEL_URL, { method: "HEAD", signal: controller.signal })
+      .then((r) => {
+        if (r.ok) setModelStatus("loaded");
+        else setModelStatus("error");
+      })
+      .catch(() => setModelStatus("error"));
+    return () => controller.abort();
+  }, []);
+
+  const useRealModel = modelStatus !== "error";
+
   return (
     <section
       id="viewer"
       className="relative py-20 overflow-hidden"
       style={{ backgroundColor: "#09090F", minHeight: "100vh" }}
     >
-      {/* Background radial glow */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
         style={{
@@ -447,7 +575,7 @@ export default function ThreeDSection() {
             gl={{ antialias: true }}
             shadows
           >
-            <Scene />
+            <Scene useRealModel={useRealModel} />
             <OrbitControls
               enablePan={false}
               minDistance={3}
@@ -457,10 +585,9 @@ export default function ThreeDSection() {
               autoRotate={false}
             />
           </Canvas>
-          <HUDOverlay />
+          <HUDOverlay modelStatus={modelStatus} />
         </motion.div>
 
-        {/* Spec strip below canvas */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
