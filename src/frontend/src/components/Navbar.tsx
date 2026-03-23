@@ -1,6 +1,7 @@
-import { Menu, X } from "lucide-react";
+import { LogOut, Menu, ShieldCheck, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 const navLinks = [
   { label: "PERFORMANCE", href: "#performance" },
@@ -22,7 +23,13 @@ const SECTION_IDS = [
   "book-test-drive",
 ];
 
-export default function Navbar() {
+interface NavbarProps {
+  onOpenAdmin?: () => void;
+  onSignOut?: () => void;
+}
+
+export default function Navbar({ onOpenAdmin, onSignOut }: NavbarProps) {
+  const { isLoggedIn, isAdmin, userName } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
@@ -86,7 +93,7 @@ export default function Navbar() {
           data-ocid="nav.link"
         >
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-rajdhani transition-all duration-300 group-hover:scale-110"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 group-hover:scale-110"
             style={{
               border: "1.5px solid #20E0E6",
               color: "#20E0E6",
@@ -96,7 +103,7 @@ export default function Navbar() {
             M
           </div>
           <span
-            className="font-rajdhani font-bold text-lg tracking-[0.15em]"
+            className="font-bold text-lg tracking-[0.15em]"
             style={{ color: "#F2F5F7" }}
           >
             BMW M5 CS
@@ -104,7 +111,7 @@ export default function Navbar() {
         </button>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-4">
           {navLinks.map((link) => {
             const active = isActive(link.href);
             return (
@@ -131,28 +138,119 @@ export default function Navbar() {
             );
           })}
 
-          <button
-            type="button"
-            onClick={() => scrollTo("#book-test-drive")}
-            className="flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300"
-            style={{
-              background: "rgba(0,191,255,0.08)",
-              border: "1.5px solid #00BFFF",
-              color: "#00BFFF",
-              boxShadow: "0 0 18px rgba(0,191,255,0.25)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = "0 0 28px rgba(0,191,255,0.5)";
-              e.currentTarget.style.background = "rgba(0,191,255,0.14)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = "0 0 18px rgba(0,191,255,0.25)";
-              e.currentTarget.style.background = "rgba(0,191,255,0.08)";
-            }}
-            data-ocid="nav.primary_button"
-          >
-            BOOK TEST DRIVE
-          </button>
+          {/* User name */}
+          {isLoggedIn && userName && (
+            <span
+              className="text-xs font-medium tracking-wide hidden lg:block"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              {userName}
+            </span>
+          )}
+
+          {/* Admin Panel button */}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={onOpenAdmin}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold tracking-[0.12em] uppercase transition-all duration-300"
+              style={{
+                background: "rgba(255,68,68,0.08)",
+                border: "1.5px solid #FF4444",
+                color: "#FF4444",
+                boxShadow: "0 0 16px rgba(255,68,68,0.2)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow =
+                  "0 0 28px rgba(255,68,68,0.4)";
+                e.currentTarget.style.background = "rgba(255,68,68,0.16)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow =
+                  "0 0 16px rgba(255,68,68,0.2)";
+                e.currentTarget.style.background = "rgba(255,68,68,0.08)";
+              }}
+              data-ocid="nav.secondary_button"
+            >
+              <ShieldCheck size={13} />
+              ADMIN
+            </button>
+          )}
+
+          {/* Book Test Drive (when not logged in) or Sign Out */}
+          {!isLoggedIn ? (
+            <button
+              type="button"
+              onClick={() => scrollTo("#book-test-drive")}
+              className="flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300"
+              style={{
+                background: "rgba(0,191,255,0.08)",
+                border: "1.5px solid #00BFFF",
+                color: "#00BFFF",
+                boxShadow: "0 0 18px rgba(0,191,255,0.25)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow =
+                  "0 0 28px rgba(0,191,255,0.5)";
+                e.currentTarget.style.background = "rgba(0,191,255,0.14)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow =
+                  "0 0 18px rgba(0,191,255,0.25)";
+                e.currentTarget.style.background = "rgba(0,191,255,0.08)";
+              }}
+              data-ocid="nav.primary_button"
+            >
+              BOOK TEST DRIVE
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => scrollTo("#book-test-drive")}
+                className="flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300"
+                style={{
+                  background: "rgba(0,191,255,0.08)",
+                  border: "1.5px solid #00BFFF",
+                  color: "#00BFFF",
+                  boxShadow: "0 0 18px rgba(0,191,255,0.25)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 0 28px rgba(0,191,255,0.5)";
+                  e.currentTarget.style.background = "rgba(0,191,255,0.14)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow =
+                    "0 0 18px rgba(0,191,255,0.25)";
+                  e.currentTarget.style.background = "rgba(0,191,255,0.08)";
+                }}
+                data-ocid="nav.primary_button"
+              >
+                BOOK TEST DRIVE
+              </button>
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold tracking-[0.12em] uppercase transition-all duration-300"
+                style={{
+                  background: "rgba(255,120,50,0.08)",
+                  border: "1.5px solid rgba(255,120,50,0.6)",
+                  color: "rgba(255,140,60,0.9)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(255,120,50,0.16)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(255,120,50,0.08)";
+                }}
+                data-ocid="nav.secondary_button"
+              >
+                <LogOut size={13} />
+                SIGN OUT
+              </button>
+            </>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -199,6 +297,14 @@ export default function Navbar() {
             className="md:hidden overflow-hidden px-6 pb-6 flex flex-col gap-4"
             style={{ borderTop: "1px solid rgba(32,224,230,0.1)" }}
           >
+            {isLoggedIn && userName && (
+              <p
+                className="text-xs pt-3"
+                style={{ color: "rgba(255,255,255,0.35)" }}
+              >
+                Signed in as {userName}
+              </p>
+            )}
             {navLinks.map((link, i) => (
               <motion.button
                 key={link.label}
@@ -239,6 +345,50 @@ export default function Navbar() {
             >
               BOOK TEST DRIVE
             </motion.button>
+            {isAdmin && (
+              <motion.button
+                type="button"
+                onClick={() => {
+                  onOpenAdmin?.();
+                  setMobileOpen(false);
+                }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: (navLinks.length + 1) * 0.05 }}
+                className="px-5 py-2.5 rounded-full text-sm font-bold tracking-widest flex items-center gap-2"
+                style={{
+                  background: "rgba(255,68,68,0.08)",
+                  border: "1.5px solid #FF4444",
+                  color: "#FF4444",
+                }}
+                data-ocid="nav.secondary_button"
+              >
+                <ShieldCheck size={14} />
+                ADMIN PANEL
+              </motion.button>
+            )}
+            {isLoggedIn && (
+              <motion.button
+                type="button"
+                onClick={() => {
+                  onSignOut?.();
+                  setMobileOpen(false);
+                }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: (navLinks.length + 2) * 0.05 }}
+                className="px-5 py-2.5 rounded-full text-sm font-bold tracking-widest flex items-center gap-2"
+                style={{
+                  background: "rgba(255,120,50,0.08)",
+                  border: "1.5px solid rgba(255,120,50,0.5)",
+                  color: "rgba(255,140,60,0.9)",
+                }}
+                data-ocid="nav.secondary_button"
+              >
+                <LogOut size={14} />
+                SIGN OUT
+              </motion.button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

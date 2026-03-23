@@ -1,5 +1,6 @@
 import List "mo:core/List";
 import Text "mo:core/Text";
+import Array "mo:core/Array";
 import Order "mo:core/Order";
 
 
@@ -11,12 +12,6 @@ actor {
     message : Text;
   };
 
-  module Comment {
-    public func compare(comment1 : Comment, comment2 : Comment) : Order.Order {
-      Text.compare(comment1.name, comment2.name);
-    };
-  };
-
   type Booking = {
     name : Text;
     email : Text;
@@ -24,12 +19,6 @@ actor {
     preferredDate : Text;
     preferredTime : Text;
     message : Text;
-  };
-
-  module Booking {
-    public func compare(booking1 : Booking, booking2 : Booking) : Order.Order {
-      Text.compare(booking1.name, booking2.name);
-    };
   };
 
   // --- State ---
@@ -55,9 +44,9 @@ actor {
     commentList.add(comment);
   };
 
-  // Get all comments (sorted by name)
+  // Get all comments
   public query ({ caller }) func getAllComments() : async [Comment] {
-    commentList.toArray().sort();
+    commentList.toArray();
   };
 
   // Submit a booking
@@ -73,8 +62,8 @@ actor {
     bookingList.add(booking);
   };
 
-  // Get all bookings (sorted by name)
+  // Get all bookings
   public query ({ caller }) func getAllBookings() : async [Booking] {
-    bookingList.toArray().sort();
+    bookingList.toArray();
   };
 };

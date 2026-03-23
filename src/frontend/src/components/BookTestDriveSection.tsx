@@ -1,6 +1,7 @@
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Loader2, Lock } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { useActor } from "../hooks/useActor";
 
 interface FormData {
@@ -100,6 +101,7 @@ function NeonTextarea({
 
 export default function BookTestDriveSection() {
   const { actor } = useActor();
+  const { isLoggedIn } = useAuth();
   const [form, setForm] = useState<FormData>({
     name: "",
     email: "",
@@ -240,7 +242,67 @@ export default function BookTestDriveSection() {
           }}
         >
           <AnimatePresence mode="wait">
-            {success ? (
+            {!isLoggedIn ? (
+              /* Not logged in — gated CTA */
+              <motion.div
+                key="gated"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center justify-center gap-6 py-10 text-center"
+                data-ocid="book.panel"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 180, delay: 0.15 }}
+                  className="w-20 h-20 rounded-full flex items-center justify-center"
+                  style={{
+                    border: "2px solid rgba(0,191,255,0.35)",
+                    background: "rgba(0,191,255,0.07)",
+                    boxShadow: "0 0 36px rgba(0,191,255,0.18)",
+                  }}
+                >
+                  <Lock className="w-8 h-8" style={{ color: "#00BFFF" }} />
+                </motion.div>
+                <div>
+                  <h3
+                    className="font-black uppercase text-xl tracking-widest mb-2"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #FFFFFF 0%, #00BFFF 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
+                  >
+                    Sign In to Book Your Test Drive
+                  </h3>
+                  <p
+                    style={{
+                      color: "rgba(255,255,255,0.4)",
+                      fontSize: "14px",
+                      maxWidth: "340px",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    You must be signed in to schedule an exclusive test drive
+                    experience with the BMW M5 CS.
+                  </p>
+                </div>
+                <p
+                  className="text-xs tracking-widest uppercase px-4 py-2 rounded-full"
+                  style={{
+                    border: "1px solid rgba(0,191,255,0.2)",
+                    color: "rgba(0,191,255,0.55)",
+                    background: "rgba(0,191,255,0.05)",
+                  }}
+                >
+                  🔒 Sign in via the top of the page to continue
+                </p>
+              </motion.div>
+            ) : success ? (
               /* Success state */
               <motion.div
                 key="success"

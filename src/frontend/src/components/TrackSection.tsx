@@ -38,7 +38,7 @@ const VIDEOS = [
     youtubeId: "tHQUODmWlpE",
     label: "Launch Control",
     subtitle: "Zero to Savage in 3.0s",
-    thumbnail: "/assets/generated/bmw-track-burnout.dim_1400x800.jpg",
+    thumbnail: "/assets/generated/bmw-track-launch.dim_1400x800.jpg",
     tags: ["Launch Control", "M5 CS", "305 km/h"],
     desc: "Launch control engaged. The M5 CS annihilates the quarter mile with surgical precision and savage acceleration.",
     accent: "#E53935",
