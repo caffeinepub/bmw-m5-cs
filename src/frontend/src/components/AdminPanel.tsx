@@ -11,6 +11,7 @@ import {
   Download,
   Eye,
   Loader2,
+  Lock,
   Mail,
   MessageSquare,
   Phone,
@@ -35,6 +36,7 @@ type BookingStatus = "pending" | "confirmed" | "rejected";
 
 interface BookingWithStatus extends Booking {
   status: BookingStatus;
+  locked?: boolean;
   id: string;
 }
 
@@ -199,6 +201,18 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
         };
         return { ...b, status: next[b.status] };
       }),
+    );
+  }
+
+  function setStatus(id: string, status: BookingStatus) {
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status } : b)),
+    );
+  }
+
+  function toggleLock(id: string) {
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, locked: !b.locked } : b)),
     );
   }
 
@@ -1022,15 +1036,20 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  cycleStatus(b.id);
+                                  if (!b.locked) cycleStatus(b.id);
                                 }}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all"
+                                disabled={b.locked}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-70"
                                 style={{
                                   background: cfg.bg,
                                   color: cfg.color,
                                   border: `1px solid ${cfg.color}44`,
                                 }}
-                                title="Click to cycle status"
+                                title={
+                                  b.locked
+                                    ? "Booking is locked"
+                                    : "Click to cycle status"
+                                }
                               >
                                 {cfg.icon} {cfg.label}
                               </button>
@@ -1158,6 +1177,104 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
                                       </div>
                                     </div>
                                   )}
+                                  {/* Accept / Reject / Lock action buttons */}
+                                  <div
+                                    className="md:col-span-3 pt-3 flex items-center gap-3 border-t flex-wrap"
+                                    style={{
+                                      borderColor: "rgba(255,255,255,0.06)",
+                                    }}
+                                  >
+                                    <span
+                                      className="text-[10px] uppercase tracking-[0.2em] mr-auto"
+                                      style={{ color: "rgba(255,255,255,0.3)" }}
+                                    >
+                                      Action
+                                    </span>
+                                    {b.locked && (
+                                      <span
+                                        className="inline-flex items-center gap-1.5 text-[10px] px-3 py-1 rounded-full"
+                                        style={{
+                                          background: "rgba(251,191,36,0.1)",
+                                          color: "#fbbf24",
+                                          border:
+                                            "1px solid rgba(251,191,36,0.3)",
+                                        }}
+                                      >
+                                        <Lock size={10} /> Decision locked
+                                      </span>
+                                    )}
+                                    {!b.locked && b.status !== "confirmed" && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setStatus(b.id, "confirmed");
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105 active:scale-95"
+                                        style={{
+                                          background: "rgba(34,197,94,0.15)",
+                                          color: "#4ade80",
+                                          border:
+                                            "1px solid rgba(34,197,94,0.35)",
+                                        }}
+                                      >
+                                        <CheckCircle size={12} /> Accept
+                                      </button>
+                                    )}
+                                    {!b.locked && b.status !== "rejected" && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setStatus(b.id, "rejected");
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105 active:scale-95"
+                                        style={{
+                                          background: "rgba(239,68,68,0.15)",
+                                          color: "#f87171",
+                                          border:
+                                            "1px solid rgba(239,68,68,0.35)",
+                                        }}
+                                      >
+                                        <XCircle size={12} /> Reject
+                                      </button>
+                                    )}
+                                    {b.status === "pending" && !b.locked && (
+                                      <span
+                                        className="text-[10px]"
+                                        style={{
+                                          color: "rgba(255,255,255,0.2)",
+                                        }}
+                                      >
+                                        Awaiting decision
+                                      </span>
+                                    )}
+                                    {(b.status === "confirmed" ||
+                                      b.status === "rejected") && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleLock(b.id);
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105 active:scale-95 ml-auto"
+                                        style={{
+                                          background: b.locked
+                                            ? "rgba(251,191,36,0.18)"
+                                            : "rgba(99,102,241,0.15)",
+                                          color: b.locked
+                                            ? "#fbbf24"
+                                            : "#a5b4fc",
+                                          border: b.locked
+                                            ? "1px solid rgba(251,191,36,0.4)"
+                                            : "1px solid rgba(99,102,241,0.35)",
+                                        }}
+                                      >
+                                        <Lock size={12} />
+                                        {b.locked ? "Unlock" : "Lock"}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </motion.div>
                             )}
