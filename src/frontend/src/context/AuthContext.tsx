@@ -15,6 +15,7 @@ interface UserAccount {
   email: string;
   passwordHash: string;
   memberSince: string;
+  recoveryKey: string;
 }
 
 interface Session {
@@ -36,7 +37,7 @@ interface AuthContextType {
     name: string,
     email: string,
     password: string,
-  ) => { ok: boolean; error?: string };
+  ) => { ok: boolean; error?: string; recoveryKey?: string };
   signIn: (email: string, password: string) => { ok: boolean; error?: string };
   adminLogin: (username: string, password: string) => boolean;
   logout: () => void;
@@ -45,6 +46,17 @@ interface AuthContextType {
     newPassword: string,
   ) => { ok: boolean; error?: string };
   updateName: (newName: string) => void;
+  /**
+   * resetPassword:
+   * - checkOnly=true  → verify email + recoveryKey match, returns ok/error
+   * - checkOnly=false → set the new password for the email (recoveryKey must still match)
+   */
+  resetPassword: (
+    email: string,
+    recoveryKey: string,
+    newPassword: string,
+    checkOnly: boolean,
+  ) => { ok: boolean; error?: string };
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -57,6 +69,20 @@ function hashPassword(password: string): string {
     hash = hash & hash;
   }
   return hash.toString(36);
+}
+
+/** Generate a unique 16-character alphanumeric recovery key, e.g. XXXX-XXXX-XXXX-XXXX */
+function generateRecoveryKey(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const segments: string[] = [];
+  for (let s = 0; s < 4; s++) {
+    let seg = "";
+    for (let i = 0; i < 4; i++) {
+      seg += chars[Math.floor(Math.random() * chars.length)];
+    }
+    segments.push(seg);
+  }
+  return segments.join("-");
 }
 
 function getUsers(): UserAccount[] {
@@ -106,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: string,
     email: string,
     password: string,
-  ): { ok: boolean; error?: string } {
+  ): { ok: boolean; error?: string; recoveryKey?: string } {
     const users = getUsers();
     const exists = users.find(
       (u) => u.email.toLowerCase() === email.toLowerCase(),
@@ -114,28 +140,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (exists)
       return { ok: false, error: "An account with this email already exists" };
     const ms = new Date().toISOString();
+    const recoveryKey = generateRecoveryKey();
     const newUser: UserAccount = {
       name,
       email: email.toLowerCase(),
       passwordHash: hashPassword(password),
       memberSince: ms,
+      recoveryKey,
     };
     saveUsers([...users, newUser]);
-    const session: Session = {
-      email: email.toLowerCase(),
-      name,
-      isAdmin: false,
-      memberSince: ms,
-      adminLastLogin: "",
-    };
-    saveSession(session);
-    setIsLoggedIn(true);
-    setIsAdmin(false);
-    setUserName(name);
-    setUserEmail(email.toLowerCase());
-    setMemberSince(ms);
-    setAdminLastLogin("");
-    return { ok: true };
+    // NOTE: We do NOT log in yet — the caller will show the recovery key modal first,
+    // then call signIn after the user acknowledges. This keeps the session clean.
+    return { ok: true, recoveryKey };
   }
 
   function signIn(
@@ -234,6 +250,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserName(newName);
   }
 
+  function resetPassword(
+    email: string,
+    recoveryKey: string,
+    newPassword: string,
+    checkOnly: boolean,
+  ): { ok: boolean; error?: string } {
+    const users = getUsers();
+    const idx = users.findIndex(
+      (u) => u.email.toLowerCase() === email.toLowerCase(),
+    );
+    if (idx === -1)
+      return { ok: false, error: "No account found with this email" };
+    if (users[idx].recoveryKey !== recoveryKey.trim().toUpperCase())
+      return { ok: false, error: "Recovery key is incorrect" };
+    if (checkOnly) return { ok: true };
+    users[idx].passwordHash = hashPassword(newPassword);
+    saveUsers(users);
+    return { ok: true };
+  }
+
+  // Expose a function to log in right after signup (called from AuthSplash after key modal)
+  function _loginAfterSignup(email: string): void {
+    const users = getUsers();
+    const user = users.find((u) => u.email === email.toLowerCase());
+    if (!user) return;
+    const session: Session = {
+      email: user.email,
+      name: user.name,
+      isAdmin: false,
+      memberSince: user.memberSince,
+      adminLastLogin: "",
+    };
+    saveSession(session);
+    setIsLoggedIn(true);
+    setIsAdmin(false);
+    setUserName(user.name);
+    setUserEmail(user.email);
+    setMemberSince(user.memberSince);
+    setAdminLastLogin("");
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -249,6 +306,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         changePassword,
         updateName,
+        resetPassword,
+        // @ts-expect-error internal helper exposed for AuthSplash
+        _loginAfterSignup,
       }}
     >
       {children}

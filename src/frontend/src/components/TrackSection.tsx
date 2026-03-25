@@ -15,7 +15,7 @@ const VIDEOS = [
   },
   {
     id: "drag",
-    youtubeId: "AFtUpMTs4vI",
+    youtubeId: "fJStNV-LVm8",
     label: "Drag Race",
     subtitle: "Maximum Straight-Line Fury",
     thumbnail: "/assets/generated/bmw-track-drag.dim_1400x800.jpg",
@@ -25,7 +25,7 @@ const VIDEOS = [
   },
   {
     id: "review",
-    youtubeId: "VMRsEg9FZYs",
+    youtubeId: "cLymq9bS6GQ",
     label: "Full Review",
     subtitle: "The Complete M Experience",
     thumbnail: "/assets/generated/bmw-track-review.dim_1400x800.jpg",
@@ -35,7 +35,7 @@ const VIDEOS = [
   },
   {
     id: "launch",
-    youtubeId: "tHQUODmWlpE",
+    youtubeId: "3s9UFh04ewY",
     label: "Launch Control",
     subtitle: "Zero to Savage in 3.0s",
     thumbnail: "/assets/generated/bmw-track-launch.dim_1400x800.jpg",
