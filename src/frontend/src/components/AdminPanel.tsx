@@ -74,6 +74,235 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
+interface ParsedBookingMessage {
+  hasBuild: boolean;
+  buildLines: string[];
+  userMessage: string;
+}
+
+function parseBookingMessage(raw: string): ParsedBookingMessage {
+  const SEPARATOR = "\n\n--- User Message ---\n";
+  const idx = raw.indexOf(SEPARATOR);
+  if (idx === -1) {
+    // Check if it looks like a build spec
+    if (
+      raw.includes("BMW M5 CS — Custom Build") ||
+      raw.includes("SELECTED OPTIONS:")
+    ) {
+      return { hasBuild: true, buildLines: raw.split("\n"), userMessage: "" };
+    }
+    return { hasBuild: false, buildLines: [], userMessage: raw };
+  }
+  const buildPart = raw.slice(0, idx);
+  const msgPart = raw.slice(idx + SEPARATOR.length);
+  return {
+    hasBuild: true,
+    buildLines: buildPart.split("\n"),
+    userMessage: msgPart.trim(),
+  };
+}
+
+function BuildSpecCard({ lines }: { lines: string[] }) {
+  const optionLines = lines.filter(
+    (l) =>
+      l.startsWith("•") &&
+      !l.startsWith("• Output") &&
+      !l.startsWith("• Torque") &&
+      !l.startsWith("• 0-60") &&
+      !l.startsWith("• Top Speed"),
+  );
+  const perfLines = lines.filter(
+    (l) =>
+      l.startsWith("• Output") ||
+      l.startsWith("• Torque") ||
+      l.startsWith("• 0-60") ||
+      l.startsWith("• Top Speed"),
+  );
+  const totalLine = lines.find((l) => l.startsWith("Grand Total:"));
+  const subtotalLine = lines.find(
+    (l) => l.startsWith("Subtotal:") && !l.startsWith("Options"),
+  );
+  const taxLine = lines.find((l) => l.startsWith("Tax"));
+  const baseLine = lines.find((l) => l.startsWith("Base Price:"));
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        border: "1px solid rgba(0,180,255,0.2)",
+        background: "rgba(0,180,255,0.03)",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="px-4 py-2.5 flex items-center gap-2"
+        style={{
+          background: "rgba(0,180,255,0.08)",
+          borderBottom: "1px solid rgba(0,180,255,0.15)",
+        }}
+      >
+        <div
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ background: "#00b4ff" }}
+        />
+        <span
+          className="text-[10px] uppercase tracking-[0.25em] font-bold"
+          style={{ color: "#00b4ff" }}
+        >
+          BMW M5 CS — Custom Build
+        </span>
+      </div>
+
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Options */}
+        {optionLines.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p
+              className="text-[9px] uppercase tracking-[0.2em] mb-1"
+              style={{ color: "rgba(0,180,255,0.5)" }}
+            >
+              Selected Options
+            </p>
+            {baseLine && (
+              <div
+                className="flex items-center justify-between text-[11px]"
+                style={{ color: "rgba(255,255,255,0.45)" }}
+              >
+                <span>Base Price</span>
+                <span>{baseLine.split(": ")[1]}</span>
+              </div>
+            )}
+            {optionLines.map((line) => {
+              const clean = line.slice(2); // remove "• "
+              const lastParen = clean.lastIndexOf("(");
+              const label =
+                lastParen > -1 ? clean.slice(0, lastParen).trim() : clean;
+              const priceMatch = clean.match(/\(([^)]+)\)$/);
+              const price = priceMatch ? priceMatch[1] : "";
+              return (
+                <div
+                  key={line}
+                  className="flex items-center justify-between rounded-lg px-3 py-1.5"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                  }}
+                >
+                  <span
+                    className="text-[11px]"
+                    style={{ color: "rgba(255,255,255,0.75)" }}
+                  >
+                    {label}
+                  </span>
+                  {price && (
+                    <span
+                      className="text-[11px] font-semibold"
+                      style={{ color: "#00b4ff" }}
+                    >
+                      {price}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Right: Pricing + Performance */}
+        <div className="flex flex-col gap-4">
+          {/* Pricing summary */}
+          <div className="flex flex-col gap-1.5">
+            <p
+              className="text-[9px] uppercase tracking-[0.2em] mb-1"
+              style={{ color: "rgba(0,180,255,0.5)" }}
+            >
+              Pricing Summary
+            </p>
+            {subtotalLine && (
+              <div
+                className="flex items-center justify-between text-[11px]"
+                style={{ color: "rgba(255,255,255,0.5)" }}
+              >
+                <span>Subtotal</span>
+                <span>{subtotalLine.split(": ")[1]}</span>
+              </div>
+            )}
+            {taxLine && (
+              <div
+                className="flex items-center justify-between text-[11px]"
+                style={{ color: "rgba(255,255,255,0.5)" }}
+              >
+                <span>Tax (10%)</span>
+                <span>{taxLine.split(": ")[1]}</span>
+              </div>
+            )}
+            {totalLine && (
+              <div
+                className="flex items-center justify-between rounded-lg px-3 py-2 mt-1"
+                style={{
+                  background: "rgba(0,180,255,0.1)",
+                  border: "1px solid rgba(0,180,255,0.25)",
+                }}
+              >
+                <span
+                  className="text-xs font-bold"
+                  style={{ color: "#00b4ff" }}
+                >
+                  Grand Total
+                </span>
+                <span className="text-sm font-black" style={{ color: "#fff" }}>
+                  {totalLine.split(": ")[1]}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Performance */}
+          {perfLines.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p
+                className="text-[9px] uppercase tracking-[0.2em] mb-1"
+                style={{ color: "rgba(255,68,68,0.5)" }}
+              >
+                Projected Performance
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {perfLines.map((line) => {
+                  const clean = line.slice(2);
+                  const [label, value] = clean.split(": ");
+                  return (
+                    <div
+                      key={line}
+                      className="rounded-lg px-3 py-2 text-center"
+                      style={{
+                        background: "rgba(255,68,68,0.06)",
+                        border: "1px solid rgba(255,68,68,0.12)",
+                      }}
+                    >
+                      <p
+                        className="text-[9px] uppercase tracking-[0.15em] mb-0.5"
+                        style={{ color: "rgba(255,68,68,0.6)" }}
+                      >
+                        {label?.trim()}
+                      </p>
+                      <p
+                        className="text-xs font-bold"
+                        style={{ color: "#fc8181" }}
+                      >
+                        {value?.trim()}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({
   icon,
   label,
@@ -1179,27 +1408,83 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
                                       </span>
                                     </div>
                                   </div>
-                                  {b.message && (
-                                    <div className="md:col-span-3 pt-2 flex flex-col gap-1">
-                                      <span
-                                        className="text-[10px] uppercase tracking-[0.2em]"
-                                        style={{ color: "rgba(255,68,68,0.6)" }}
-                                      >
-                                        Message
-                                      </span>
-                                      <div
-                                        className="rounded-lg p-3 text-xs leading-relaxed"
-                                        style={{
-                                          background: "rgba(255,255,255,0.04)",
-                                          color: "rgba(255,255,255,0.6)",
-                                          border:
-                                            "1px solid rgba(255,255,255,0.06)",
-                                        }}
-                                      >
-                                        {b.message}
-                                      </div>
-                                    </div>
-                                  )}
+                                  {b.message &&
+                                    (() => {
+                                      const parsed = parseBookingMessage(
+                                        b.message,
+                                      );
+                                      return (
+                                        <>
+                                          {parsed.hasBuild && (
+                                            <div className="md:col-span-3 pt-2 flex flex-col gap-1.5">
+                                              <span
+                                                className="text-[10px] uppercase tracking-[0.2em]"
+                                                style={{
+                                                  color: "rgba(0,180,255,0.6)",
+                                                }}
+                                              >
+                                                Custom Build
+                                              </span>
+                                              <BuildSpecCard
+                                                lines={parsed.buildLines}
+                                              />
+                                            </div>
+                                          )}
+                                          {parsed.userMessage && (
+                                            <div className="md:col-span-3 pt-2 flex flex-col gap-1">
+                                              <span
+                                                className="text-[10px] uppercase tracking-[0.2em]"
+                                                style={{
+                                                  color: "rgba(255,68,68,0.6)",
+                                                }}
+                                              >
+                                                Message
+                                              </span>
+                                              <div
+                                                className="rounded-lg p-3 text-xs leading-relaxed"
+                                                style={{
+                                                  background:
+                                                    "rgba(255,255,255,0.04)",
+                                                  color:
+                                                    "rgba(255,255,255,0.6)",
+                                                  border:
+                                                    "1px solid rgba(255,255,255,0.06)",
+                                                }}
+                                              >
+                                                {parsed.userMessage}
+                                              </div>
+                                            </div>
+                                          )}
+                                          {!parsed.hasBuild &&
+                                            !parsed.userMessage && (
+                                              <div className="md:col-span-3 pt-2 flex flex-col gap-1">
+                                                <span
+                                                  className="text-[10px] uppercase tracking-[0.2em]"
+                                                  style={{
+                                                    color:
+                                                      "rgba(255,68,68,0.6)",
+                                                  }}
+                                                >
+                                                  Message
+                                                </span>
+                                                <div
+                                                  className="rounded-lg p-3 text-xs leading-relaxed"
+                                                  style={{
+                                                    background:
+                                                      "rgba(255,255,255,0.04)",
+                                                    color:
+                                                      "rgba(255,255,255,0.6)",
+                                                    border:
+                                                      "1px solid rgba(255,255,255,0.06)",
+                                                  }}
+                                                >
+                                                  {b.message}
+                                                </div>
+                                              </div>
+                                            )}
+                                        </>
+                                      );
+                                    })()}
                                   {/* Accept / Reject / Lock action buttons */}
                                   <div
                                     className="md:col-span-3 pt-3 flex items-center gap-3 border-t flex-wrap"

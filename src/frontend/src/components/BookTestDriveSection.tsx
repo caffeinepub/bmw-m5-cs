@@ -1,8 +1,8 @@
 import { AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useId, useState } from "react";
+import { createActorWithConfig } from "../config";
 import { useAuth } from "../context/AuthContext";
-import { useActor } from "../hooks/useActor";
 import AuthSplash from "./AuthSplash";
 
 interface BookTestDriveSectionProps {
@@ -108,7 +108,6 @@ function NeonTextarea({
 export default function BookTestDriveSection({
   customizationSpec,
 }: BookTestDriveSectionProps) {
-  const { actor, isFetching: actorLoading } = useActor();
   const { isLoggedIn } = useAuth();
   const [form, setForm] = useState<FormData>({
     name: "",
@@ -148,7 +147,7 @@ export default function BookTestDriveSection({
     setError("");
     setLoading(true);
     try {
-      if (!actor) throw new Error("Not connected");
+      const actor = await createActorWithConfig();
       const combined = form.configurationSpec
         ? `${form.configurationSpec}\n\n--- User Message ---\n${form.message}`
         : form.message;
@@ -161,7 +160,8 @@ export default function BookTestDriveSection({
         combined,
       );
       setSuccess(true);
-    } catch (_err) {
+    } catch (err) {
+      console.error("Booking error:", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -558,7 +558,7 @@ export default function BookTestDriveSection({
                 >
                   <button
                     type="submit"
-                    disabled={loading || actorLoading || !actor}
+                    disabled={loading}
                     className="w-full py-4 rounded-full font-bold tracking-[0.2em] uppercase text-sm transition-all duration-300 flex items-center justify-center gap-2"
                     style={{
                       background: loading
