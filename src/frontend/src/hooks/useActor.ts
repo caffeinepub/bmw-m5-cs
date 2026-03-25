@@ -12,8 +12,13 @@ export function useActor() {
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
       if (!identity) {
+        // Anonymous actor — this app uses custom browser-based auth,
+        // not Internet Identity, so anonymous actors handle all calls.
         return await createActorWithConfig();
       }
+      // Internet Identity session present — pass identity to agent.
+      // NOTE: this backend has no authorization component, so we do NOT
+      // call _initializeAccessControlWithSecret (it doesn't exist here).
       return await createActorWithConfig({ agentOptions: { identity } });
     },
     staleTime: Number.POSITIVE_INFINITY,
@@ -23,10 +28,10 @@ export function useActor() {
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({
-        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
+        predicate: (q) => !q.queryKey.includes(ACTOR_QUERY_KEY),
       });
       queryClient.refetchQueries({
-        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
+        predicate: (q) => !q.queryKey.includes(ACTOR_QUERY_KEY),
       });
     }
   }, [actorQuery.data, queryClient]);
