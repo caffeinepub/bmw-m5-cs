@@ -1,8 +1,13 @@
-import { CheckCircle, Loader2, Lock } from "lucide-react";
+import { AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useActor } from "../hooks/useActor";
+import AuthSplash from "./AuthSplash";
+
+interface BookTestDriveSectionProps {
+  customizationSpec?: string;
+}
 
 interface FormData {
   name: string;
@@ -10,6 +15,7 @@ interface FormData {
   phone: string;
   preferredDate: string;
   preferredTime: string;
+  configurationSpec: string;
   message: string;
 }
 
@@ -80,11 +86,11 @@ function NeonTextarea({
       <textarea
         id={id}
         {...props}
-        rows={4}
+        rows={6}
         style={{
           ...inputStyle,
           ...(focused ? focusStyle : {}),
-          resize: "none",
+          resize: "vertical",
         }}
         onFocus={(e) => {
           setFocused(true);
@@ -99,7 +105,9 @@ function NeonTextarea({
   );
 }
 
-export default function BookTestDriveSection() {
+export default function BookTestDriveSection({
+  customizationSpec,
+}: BookTestDriveSectionProps) {
   const { actor, isFetching: actorLoading } = useActor();
   const { isLoggedIn } = useAuth();
   const [form, setForm] = useState<FormData>({
@@ -108,11 +116,22 @@ export default function BookTestDriveSection() {
     phone: "",
     preferredDate: "",
     preferredTime: "",
+    configurationSpec: "",
     message: "",
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [showInlineAuth, setShowInlineAuth] = useState(false);
+  const [specBannerDismissed, setSpecBannerDismissed] = useState(false);
+
+  // Pre-fill configurationSpec when customizationSpec changes
+  useEffect(() => {
+    if (customizationSpec) {
+      setForm((prev) => ({ ...prev, configurationSpec: customizationSpec }));
+      setSpecBannerDismissed(false);
+    }
+  }, [customizationSpec]);
 
   function handleChange(field: keyof FormData) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -122,17 +141,24 @@ export default function BookTestDriveSection() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isLoggedIn) {
+      setShowInlineAuth(true);
+      return;
+    }
     setError("");
     setLoading(true);
     try {
       if (!actor) throw new Error("Not connected");
+      const combined = form.configurationSpec
+        ? `${form.configurationSpec}\n\n--- User Message ---\n${form.message}`
+        : form.message;
       await actor.submitBooking(
         form.name,
         form.email,
         form.phone,
         form.preferredDate,
         form.preferredTime,
-        form.message,
+        combined,
       );
       setSuccess(true);
     } catch (_err) {
@@ -150,9 +176,13 @@ export default function BookTestDriveSection() {
       phone: "",
       preferredDate: "",
       preferredTime: "",
+      configurationSpec: customizationSpec ?? "",
       message: "",
     });
   }
+
+  const showSpecBanner =
+    !!customizationSpec && !specBannerDismissed && !success;
 
   return (
     <section
@@ -242,67 +272,7 @@ export default function BookTestDriveSection() {
           }}
         >
           <AnimatePresence mode="wait">
-            {!isLoggedIn ? (
-              /* Not logged in — gated CTA */
-              <motion.div
-                key="gated"
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.4 }}
-                className="flex flex-col items-center justify-center gap-6 py-10 text-center"
-                data-ocid="book.panel"
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 180, delay: 0.15 }}
-                  className="w-20 h-20 rounded-full flex items-center justify-center"
-                  style={{
-                    border: "2px solid rgba(0,191,255,0.35)",
-                    background: "rgba(0,191,255,0.07)",
-                    boxShadow: "0 0 36px rgba(0,191,255,0.18)",
-                  }}
-                >
-                  <Lock className="w-8 h-8" style={{ color: "#00BFFF" }} />
-                </motion.div>
-                <div>
-                  <h3
-                    className="font-black uppercase text-xl tracking-widest mb-2"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #FFFFFF 0%, #00BFFF 100%)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                      backgroundClip: "text",
-                    }}
-                  >
-                    Sign In to Book Your Test Drive
-                  </h3>
-                  <p
-                    style={{
-                      color: "rgba(255,255,255,0.4)",
-                      fontSize: "14px",
-                      maxWidth: "340px",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    You must be signed in to schedule an exclusive test drive
-                    experience with the BMW M5 CS.
-                  </p>
-                </div>
-                <p
-                  className="text-xs tracking-widest uppercase px-4 py-2 rounded-full"
-                  style={{
-                    border: "1px solid rgba(0,191,255,0.2)",
-                    color: "rgba(0,191,255,0.55)",
-                    background: "rgba(0,191,255,0.05)",
-                  }}
-                >
-                  🔒 Sign in via the top of the page to continue
-                </p>
-              </motion.div>
-            ) : success ? (
+            {success ? (
               /* Success state */
               <motion.div
                 key="success"
@@ -379,6 +349,52 @@ export default function BookTestDriveSection() {
                 className="flex flex-col gap-6"
                 data-ocid="book.modal"
               >
+                {/* Config applied banner */}
+                <AnimatePresence>
+                  {showSpecBanner && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
+                      exit={{ opacity: 0, y: -10, height: 0 }}
+                      transition={{ duration: 0.35 }}
+                      className="overflow-hidden"
+                      data-ocid="book.success_state"
+                    >
+                      <div
+                        className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                        style={{
+                          background: "rgba(0,191,255,0.08)",
+                          border: "1px solid rgba(0,191,255,0.35)",
+                          boxShadow: "0 0 20px rgba(0,191,255,0.1)",
+                        }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <CheckCircle
+                            className="w-4 h-4 flex-shrink-0"
+                            style={{ color: "#00BFFF" }}
+                          />
+                          <p
+                            className="text-xs font-semibold"
+                            style={{ color: "#00BFFF" }}
+                          >
+                            Your configuration has been applied — see the
+                            Configuration field below
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSpecBannerDismissed(true)}
+                          className="flex-shrink-0 p-0.5 rounded"
+                          style={{ color: "rgba(0,191,255,0.5)" }}
+                          data-ocid="book.close_button"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -461,15 +477,63 @@ export default function BookTestDriveSection() {
                   </motion.div>
                 </div>
 
+                {/* Configuration read-only field */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: 0.4 }}
+                  transition={{ delay: 0.38 }}
+                  className="flex flex-col gap-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span style={labelStyle}>Your Configuration</span>
+                    {form.configurationSpec && (
+                      <span
+                        className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                        style={{
+                          background: "rgba(0,191,255,0.12)",
+                          color: "rgba(0,191,255,0.7)",
+                          border: "1px solid rgba(0,191,255,0.25)",
+                        }}
+                      >
+                        ✓ Applied
+                      </span>
+                    )}
+                  </div>
+                  <textarea
+                    readOnly
+                    rows={8}
+                    value={form.configurationSpec}
+                    placeholder="Apply your configuration from the section above..."
+                    style={{
+                      ...inputStyle,
+                      backgroundColor: "rgba(0,191,255,0.03)",
+                      border: form.configurationSpec
+                        ? "1px solid rgba(0,191,255,0.3)"
+                        : "1px solid rgba(255,255,255,0.07)",
+                      resize: "none",
+                      cursor: "default",
+                      fontFamily: "monospace",
+                      fontSize: "11px",
+                      lineHeight: 1.6,
+                      color: form.configurationSpec
+                        ? "rgba(255,255,255,0.65)"
+                        : "rgba(255,255,255,0.25)",
+                    }}
+                    data-ocid="book.textarea"
+                  />
+                </motion.div>
+
+                {/* Message (editable) */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.42 }}
                 >
                   <NeonTextarea
                     label="Message (Optional)"
-                    placeholder="Any specific preferences or questions..."
+                    placeholder="Any additional requests or notes..."
                     value={form.message}
                     onChange={handleChange("message")}
                     data-ocid="book.textarea"
@@ -523,6 +587,87 @@ export default function BookTestDriveSection() {
             )}
           </AnimatePresence>
         </motion.div>
+        {/* Inline login required warning + AuthSplash overlay */}
+        <AnimatePresence>
+          {showInlineAuth && (
+            <>
+              <AuthSplash onClose={() => setShowInlineAuth(false)} />
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                transition={{ duration: 0.4 }}
+                className="relative rounded-2xl p-6 mt-4 mx-4"
+                style={{
+                  border: "1.5px solid rgba(255,80,60,0.6)",
+                  background: "rgba(255,40,20,0.06)",
+                  boxShadow: "0 0 40px rgba(255,80,40,0.18)",
+                }}
+                data-ocid="book.modal"
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowInlineAuth(false)}
+                  className="absolute top-3 right-3 p-1 rounded-full transition-colors"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                  data-ocid="book.close_button"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex items-start gap-3 mb-4">
+                  <AlertTriangle
+                    className="w-6 h-6 mt-0.5 flex-shrink-0"
+                    style={{ color: "#FF5030" }}
+                  />
+                  <div>
+                    <h4
+                      className="font-black uppercase tracking-widest text-base mb-1"
+                      style={{ color: "#FF5030" }}
+                    >
+                      ⚠️ Login Required
+                    </h4>
+                    <p
+                      className="text-xs leading-relaxed"
+                      style={{ color: "rgba(255,255,255,0.5)" }}
+                    >
+                      You must be signed in to confirm your test drive booking.
+                      This step is mandatory.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowInlineAuth(true)}
+                    className="flex-1 py-2.5 rounded-full text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(0,191,255,0.25) 0%, rgba(0,191,255,0.1) 100%)",
+                      border: "1px solid rgba(0,191,255,0.5)",
+                      color: "#00BFFF",
+                    }}
+                    data-ocid="book.primary_button"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowInlineAuth(true)}
+                    className="flex-1 py-2.5 rounded-full text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      color: "rgba(255,255,255,0.6)",
+                    }}
+                    data-ocid="book.secondary_button"
+                  >
+                    Create Account
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );

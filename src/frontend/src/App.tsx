@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import AdminPanel from "./components/AdminPanel";
 import AuthSplash from "./components/AuthSplash";
 import BookTestDriveSection from "./components/BookTestDriveSection";
+import CarCustomizationSection from "./components/CarCustomizationSection";
 import CustomCursor from "./components/CustomCursor";
 import DesignShowcase from "./components/DesignShowcase";
 import EngineSoundSection from "./components/EngineSoundSection";
@@ -24,6 +25,7 @@ function AppInner() {
   const [authDone, setAuthDone] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [customizationSpec, setCustomizationSpec] = useState("");
   const { logout } = useAuth();
 
   useEffect(() => {
@@ -36,6 +38,10 @@ function AppInner() {
     setAuthDone(false);
     setAdminPanelOpen(false);
     setProfileOpen(false);
+  }
+
+  function handleConfigChange(spec: string, _total: number) {
+    setCustomizationSpec(spec);
   }
 
   return (
@@ -89,7 +95,8 @@ function AppInner() {
             <TechSection />
             <EngineSoundSection />
             <GallerySection />
-            <BookTestDriveSection />
+            <CarCustomizationSection onConfigChange={handleConfigChange} />
+            <BookTestDriveSection customizationSpec={customizationSpec} />
           </main>
           <Footer />
         </>
