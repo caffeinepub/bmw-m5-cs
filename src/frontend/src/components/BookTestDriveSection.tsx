@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle, Loader2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import type { backendInterface } from "../backend";
 import { createActorWithConfig } from "../config";
 import { useAuth } from "../context/AuthContext";
 import AuthSplash from "./AuthSplash";
@@ -105,10 +106,32 @@ function NeonTextarea({
   );
 }
 
+/** Retry a promise-returning function up to maxAttempts times with exponential backoff */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 800,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts - 1) {
+        await new Promise((r) => setTimeout(r, baseDelayMs * 2 ** attempt));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export default function BookTestDriveSection({
   customizationSpec,
 }: BookTestDriveSectionProps) {
   const { isLoggedIn } = useAuth();
+  const actorRef = useRef<backendInterface | null>(null);
+
   const [form, setForm] = useState<FormData>({
     name: "",
     email: "",
@@ -123,6 +146,17 @@ export default function BookTestDriveSection({
   const [error, setError] = useState("");
   const [showInlineAuth, setShowInlineAuth] = useState(false);
   const [specBannerDismissed, setSpecBannerDismissed] = useState(false);
+
+  // Pre-warm the actor in background so submission is instant
+  useEffect(() => {
+    createActorWithConfig()
+      .then((a) => {
+        actorRef.current = a;
+      })
+      .catch(() => {
+        /* will retry on submit */
+      });
+  }, []);
 
   // Pre-fill configurationSpec when customizationSpec changes
   useEffect(() => {
@@ -147,21 +181,29 @@ export default function BookTestDriveSection({
     setError("");
     setLoading(true);
     try {
-      const actor = await createActorWithConfig();
-      const combined = form.configurationSpec
-        ? `${form.configurationSpec}\n\n--- User Message ---\n${form.message}`
-        : form.message;
-      await actor.submitBooking(
-        form.name,
-        form.email,
-        form.phone,
-        form.preferredDate,
-        form.preferredTime,
-        combined,
-      );
+      await withRetry(async () => {
+        // Use cached actor or create fresh one
+        const actor = actorRef.current ?? (await createActorWithConfig());
+        actorRef.current = actor;
+
+        const combined = form.configurationSpec
+          ? `${form.configurationSpec}\n\n--- User Message ---\n${form.message}`
+          : form.message;
+
+        await actor.submitBooking(
+          form.name,
+          form.email,
+          form.phone,
+          form.preferredDate,
+          form.preferredTime,
+          combined,
+        );
+      });
       setSuccess(true);
     } catch (err) {
       console.error("Booking error:", err);
+      // On error, clear cached actor so next attempt creates fresh
+      actorRef.current = null;
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -541,13 +583,15 @@ export default function BookTestDriveSection({
                 </motion.div>
 
                 {error && (
-                  <p
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     className="text-sm text-center"
                     style={{ color: "#FF4D4D" }}
                     data-ocid="book.error_state"
                   >
                     {error}
-                  </p>
+                  </motion.p>
                 )}
 
                 <motion.div
