@@ -90,12 +90,15 @@ export class ExternalBlob {
     }
 }
 export interface Booking {
+    id: bigint;
     name: string;
     email: string;
     message: string;
     preferredDate: string;
     preferredTime: string;
     phone: string;
+    status: string;
+    locked: boolean;
 }
 export interface Comment {
     name: string;
@@ -106,8 +109,10 @@ export interface backendInterface {
     getAllComments(): Promise<Array<Comment>>;
     getVisitorCount(): Promise<bigint>;
     incrementVisitorCount(): Promise<bigint>;
-    submitBooking(name: string, email: string, phone: string, preferredDate: string, preferredTime: string, message: string): Promise<void>;
+    submitBooking(name: string, email: string, phone: string, preferredDate: string, preferredTime: string, message: string): Promise<bigint>;
     submitComment(name: string, message: string): Promise<void>;
+    updateBookingStatus(id: bigint, newStatus: string): Promise<boolean>;
+    updateBookingLock(id: bigint, newLocked: boolean): Promise<boolean>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
@@ -167,7 +172,7 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async submitBooking(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<void> {
+    async submitBooking(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<bigint> {
         if (this.processError) {
             try {
                 const result = await this.actor.submitBooking(arg0, arg1, arg2, arg3, arg4, arg5);
@@ -178,6 +183,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.submitBooking(arg0, arg1, arg2, arg3, arg4, arg5);
+            return result;
+        }
+    }
+    async updateBookingStatus(arg0: bigint, arg1: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateBookingStatus(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateBookingStatus(arg0, arg1);
+            return result;
+        }
+    }
+    async updateBookingLock(arg0: bigint, arg1: boolean): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateBookingLock(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateBookingLock(arg0, arg1);
             return result;
         }
     }

@@ -13,6 +13,7 @@ import HeroSection from "./components/HeroSection";
 import LoadingScreen from "./components/LoadingScreen";
 import Navbar from "./components/Navbar";
 import PerformanceSection from "./components/PerformanceSection";
+import ProfilePage from "./components/ProfilePage";
 import TechSection from "./components/TechSection";
 import ThreeDSection from "./components/ThreeDSection";
 import TrackSection from "./components/TrackSection";
@@ -22,6 +23,7 @@ function AppInner() {
   const [loading, setLoading] = useState(true);
   const [authDone, setAuthDone] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { logout } = useAuth();
 
   useEffect(() => {
@@ -33,6 +35,7 @@ function AppInner() {
     logout();
     setAuthDone(false);
     setAdminPanelOpen(false);
+    setProfileOpen(false);
   }
 
   return (
@@ -56,11 +59,24 @@ function AppInner() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {profileOpen && authDone && !loading && (
+          <ProfilePage
+            onClose={() => setProfileOpen(false)}
+            onOpenAdmin={() => {
+              setProfileOpen(false);
+              setAdminPanelOpen(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {!loading && authDone && (
         <>
           <Navbar
             onOpenAdmin={() => setAdminPanelOpen(true)}
             onSignOut={handleSignOut}
+            onOpenProfile={() => setProfileOpen(true)}
           />
           <main>
             <HeroSection />

@@ -34,10 +34,11 @@ type SortField = "name" | "date" | "email";
 type SortDir = "asc" | "desc";
 type BookingStatus = "pending" | "confirmed" | "rejected";
 
-interface BookingWithStatus extends Booking {
+interface BookingWithStatus extends Omit<Booking, "id" | "status" | "locked"> {
   status: BookingStatus;
-  locked?: boolean;
+  locked: boolean;
   id: string;
+  backendId: bigint;
 }
 
 const STATUS_CONFIG: Record<
@@ -170,8 +171,10 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
       setBookings(
         rawBookings.map((b, i) => ({
           ...b,
-          status: "pending" as BookingStatus,
+          status: (b.status as BookingStatus) || "pending",
+          locked: b.locked ?? false,
           id: `${b.email}-${b.preferredDate}-${i}`,
+          backendId: b.id,
         })),
       );
       setComments(rawComments);
@@ -190,30 +193,50 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
     fetchAll();
   }, [actor, isFetching]);
 
-  function cycleStatus(id: string) {
+  async function cycleStatus(id: string) {
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking || booking.locked) return;
+    const next: Record<BookingStatus, BookingStatus> = {
+      pending: "confirmed",
+      confirmed: "rejected",
+      rejected: "pending",
+    };
+    const newStatus = next[booking.status];
     setBookings((prev) =>
-      prev.map((b) => {
-        if (b.id !== id) return b;
-        const next: Record<BookingStatus, BookingStatus> = {
-          pending: "confirmed",
-          confirmed: "rejected",
-          rejected: "pending",
-        };
-        return { ...b, status: next[b.status] };
-      }),
+      prev.map((b) => (b.id === id ? { ...b, status: newStatus } : b)),
     );
+    try {
+      if (actor) await actor.updateBookingStatus(booking.backendId, newStatus);
+    } catch (e) {
+      console.error("Failed to persist status", e);
+    }
   }
 
-  function setStatus(id: string, status: BookingStatus) {
+  async function setStatus(id: string, status: BookingStatus) {
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking || booking.locked) return;
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, status } : b)),
     );
+    try {
+      if (actor) await actor.updateBookingStatus(booking.backendId, status);
+    } catch (e) {
+      console.error("Failed to persist status", e);
+    }
   }
 
-  function toggleLock(id: string) {
+  async function toggleLock(id: string) {
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking) return;
+    const newLocked = !booking.locked;
     setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, locked: !b.locked } : b)),
+      prev.map((b) => (b.id === id ? { ...b, locked: newLocked } : b)),
     );
+    try {
+      if (actor) await actor.updateBookingLock(booking.backendId, newLocked);
+    } catch (e) {
+      console.error("Failed to persist lock", e);
+    }
   }
 
   function exportCSV() {

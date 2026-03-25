@@ -1,4 +1,4 @@
-import { LogOut, Menu, ShieldCheck, X } from "lucide-react";
+import { LogOut, Menu, ShieldCheck, User, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -26,9 +26,14 @@ const SECTION_IDS = [
 interface NavbarProps {
   onOpenAdmin?: () => void;
   onSignOut?: () => void;
+  onOpenProfile?: () => void;
 }
 
-export default function Navbar({ onOpenAdmin, onSignOut }: NavbarProps) {
+export default function Navbar({
+  onOpenAdmin,
+  onSignOut,
+  onOpenProfile,
+}: NavbarProps) {
   const { isLoggedIn, isAdmin, userName } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -66,6 +71,16 @@ export default function Navbar({ onOpenAdmin, onSignOut }: NavbarProps) {
   };
 
   const isActive = (href: string) => activeSection === href.replace("#", "");
+
+  const profileColor = isAdmin ? "#FF6B35" : "#20E0E6";
+  const profileBg = isAdmin ? "rgba(255,107,53,0.08)" : "rgba(32,224,230,0.08)";
+  const profileBgHover = isAdmin
+    ? "rgba(255,107,53,0.16)"
+    : "rgba(32,224,230,0.16)";
+  const profileGlow = isAdmin ? "rgba(255,107,53,0.2)" : "rgba(32,224,230,0.2)";
+  const profileGlowHover = isAdmin
+    ? "rgba(255,107,53,0.4)"
+    : "rgba(32,224,230,0.4)";
 
   return (
     <motion.nav
@@ -148,6 +163,33 @@ export default function Navbar({ onOpenAdmin, onSignOut }: NavbarProps) {
             </span>
           )}
 
+          {/* Profile button */}
+          {isLoggedIn && (
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold tracking-[0.12em] uppercase transition-all duration-300"
+              style={{
+                background: profileBg,
+                border: `1.5px solid ${profileColor}`,
+                color: profileColor,
+                boxShadow: `0 0 16px ${profileGlow}`,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = `0 0 28px ${profileGlowHover}`;
+                e.currentTarget.style.background = profileBgHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = `0 0 16px ${profileGlow}`;
+                e.currentTarget.style.background = profileBg;
+              }}
+              data-ocid="nav.secondary_button"
+            >
+              <User size={13} />
+              PROFILE
+            </button>
+          )}
+
           {/* Admin Panel button */}
           {isAdmin && (
             <button
@@ -177,7 +219,7 @@ export default function Navbar({ onOpenAdmin, onSignOut }: NavbarProps) {
             </button>
           )}
 
-          {/* Book Test Drive (when not logged in) or Sign Out */}
+          {/* Book Test Drive / Sign Out */}
           {!isLoggedIn ? (
             <button
               type="button"
@@ -345,6 +387,28 @@ export default function Navbar({ onOpenAdmin, onSignOut }: NavbarProps) {
             >
               BOOK TEST DRIVE
             </motion.button>
+            {isLoggedIn && (
+              <motion.button
+                type="button"
+                onClick={() => {
+                  onOpenProfile?.();
+                  setMobileOpen(false);
+                }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: (navLinks.length + 0.5) * 0.05 }}
+                className="px-5 py-2.5 rounded-full text-sm font-bold tracking-widest flex items-center gap-2"
+                style={{
+                  background: profileBg,
+                  border: `1.5px solid ${profileColor}`,
+                  color: profileColor,
+                }}
+                data-ocid="nav.secondary_button"
+              >
+                <User size={14} />
+                PROFILE
+              </motion.button>
+            )}
             {isAdmin && (
               <motion.button
                 type="button"

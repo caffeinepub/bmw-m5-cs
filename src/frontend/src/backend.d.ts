@@ -8,12 +8,15 @@ export interface None {
 }
 export type Option<T> = Some<T> | None;
 export interface Booking {
+    id: bigint;
     name: string;
     email: string;
     message: string;
     preferredDate: string;
     preferredTime: string;
     phone: string;
+    status: string;
+    locked: boolean;
 }
 export interface Comment {
     name: string;
@@ -24,6 +27,8 @@ export interface backendInterface {
     getAllComments(): Promise<Array<Comment>>;
     getVisitorCount(): Promise<bigint>;
     incrementVisitorCount(): Promise<bigint>;
-    submitBooking(name: string, email: string, phone: string, preferredDate: string, preferredTime: string, message: string): Promise<void>;
+    submitBooking(name: string, email: string, phone: string, preferredDate: string, preferredTime: string, message: string): Promise<bigint>;
     submitComment(name: string, message: string): Promise<void>;
+    updateBookingStatus(id: bigint, newStatus: string): Promise<boolean>;
+    updateBookingLock(id: bigint, newLocked: boolean): Promise<boolean>;
 }
