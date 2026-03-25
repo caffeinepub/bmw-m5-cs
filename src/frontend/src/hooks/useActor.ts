@@ -26,6 +26,7 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
+
       return actor;
     },
     // Only refetch when identity changes

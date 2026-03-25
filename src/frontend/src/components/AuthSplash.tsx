@@ -85,42 +85,98 @@ const CORNERS = [
   },
 ];
 
+type Tab = "signin" | "signup" | "admin";
+
 export default function AuthSplash({ onClose }: { onClose: () => void }) {
-  const { login, adminLogin } = useAuth();
-  const [tab, setTab] = useState<"enter" | "admin">("enter");
+  const { signIn, signUp, adminLogin } = useAuth();
+  const [tab, setTab] = useState<Tab>("signin");
 
-  const [name, setName] = useState("");
-  const [nameError, setNameError] = useState("");
+  // Sign In state
+  const [siEmail, setSiEmail] = useState("");
+  const [siPassword, setSiPassword] = useState("");
+  const [siError, setSiError] = useState("");
+  const [siLoading, setSiLoading] = useState(false);
 
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [adminError, setAdminError] = useState("");
-  const [adminLoading, setAdminLoading] = useState(false);
+  // Sign Up state
+  const [suName, setSuName] = useState("");
+  const [suEmail, setSuEmail] = useState("");
+  const [suPassword, setSuPassword] = useState("");
+  const [suConfirm, setSuConfirm] = useState("");
+  const [suError, setSuError] = useState("");
+  const [suLoading, setSuLoading] = useState(false);
 
-  function handleEnter(e: React.FormEvent) {
+  // Admin state
+  const [adUser, setAdUser] = useState("");
+  const [adPassword, setAdPassword] = useState("");
+  const [adError, setAdError] = useState("");
+  const [adLoading, setAdLoading] = useState(false);
+
+  function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) {
-      setNameError("Please enter your name");
+    setSiError("");
+    if (!siEmail.trim() || !siPassword) {
+      setSiError("Please fill in all fields");
       return;
     }
-    login(name.trim());
-    onClose();
+    setSiLoading(true);
+    setTimeout(() => {
+      const result = signIn(siEmail.trim(), siPassword);
+      if (result.ok) {
+        onClose();
+      } else {
+        setSiError(result.error ?? "Sign in failed");
+      }
+      setSiLoading(false);
+    }, 400);
+  }
+
+  function handleSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    setSuError("");
+    if (!suName.trim() || !suEmail.trim() || !suPassword || !suConfirm) {
+      setSuError("Please fill in all fields");
+      return;
+    }
+    if (suPassword.length < 6) {
+      setSuError("Password must be at least 6 characters");
+      return;
+    }
+    if (suPassword !== suConfirm) {
+      setSuError("Passwords do not match");
+      return;
+    }
+    setSuLoading(true);
+    setTimeout(() => {
+      const result = signUp(suName.trim(), suEmail.trim(), suPassword);
+      if (result.ok) {
+        onClose();
+      } else {
+        setSuError(result.error ?? "Sign up failed");
+      }
+      setSuLoading(false);
+    }, 400);
   }
 
   function handleAdminLogin(e: React.FormEvent) {
     e.preventDefault();
-    setAdminLoading(true);
-    setAdminError("");
+    setAdError("");
+    setAdLoading(true);
     setTimeout(() => {
-      const ok = adminLogin(adminEmail.trim(), adminPassword);
+      const ok = adminLogin(adUser.trim(), adPassword);
       if (ok) {
         onClose();
       } else {
-        setAdminError("Invalid credentials");
+        setAdError("Invalid credentials");
       }
-      setAdminLoading(false);
+      setAdLoading(false);
     }, 600);
   }
+
+  const tabs: { key: Tab; label: string; color: string }[] = [
+    { key: "signin", label: "Sign In", color: "#00BFFF" },
+    { key: "signup", label: "Sign Up", color: "#20E0E6" },
+    { key: "admin", label: "Admin", color: "#FF4444" },
+  ];
 
   return (
     <motion.div
@@ -166,12 +222,12 @@ export default function AuthSplash({ onClose }: { onClose: () => void }) {
           }}
         >
           {/* M Logo */}
-          <div className="flex flex-col items-center mb-7">
+          <div className="flex flex-col items-center mb-6">
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
-              className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+              className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
               style={{
                 border: "2px solid #00BFFF",
                 boxShadow:
@@ -181,11 +237,7 @@ export default function AuthSplash({ onClose }: { onClose: () => void }) {
             >
               <span
                 className="text-2xl font-black tracking-tight"
-                style={{
-                  color: "#00BFFF",
-                  textShadow: "0 0 14px #00BFFF",
-                  fontFamily: "sans-serif",
-                }}
+                style={{ color: "#00BFFF", textShadow: "0 0 14px #00BFFF" }}
               >
                 M
               </span>
@@ -203,7 +255,7 @@ export default function AuthSplash({ onClose }: { onClose: () => void }) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="text-xl font-black uppercase tracking-widest text-center"
+              className="text-lg font-black uppercase tracking-widest text-center"
               style={{
                 background: "linear-gradient(135deg, #FFFFFF 0%, #00BFFF 100%)",
                 WebkitBackgroundClip: "text",
@@ -217,96 +269,220 @@ export default function AuthSplash({ onClose }: { onClose: () => void }) {
 
           {/* Tabs */}
           <div
-            className="flex gap-1 p-1 rounded-xl mb-6"
+            className="flex gap-1 p-1 rounded-xl mb-5"
             style={{
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(0,191,255,0.1)",
             }}
           >
-            {(["enter", "admin"] as const).map((t) => (
+            {tabs.map((t) => (
               <button
-                key={t}
+                key={t.key}
                 type="button"
-                onClick={() => setTab(t)}
-                className="flex-1 py-2.5 rounded-lg text-xs font-bold tracking-[0.2em] uppercase transition-all duration-300"
+                onClick={() => setTab(t.key)}
+                className="flex-1 py-2 rounded-lg text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300"
                 style={{
                   background:
-                    tab === t ? "rgba(0,191,255,0.15)" : "transparent",
-                  color: tab === t ? "#00BFFF" : "rgba(255,255,255,0.35)",
+                    tab === t.key
+                      ? `rgba(${t.key === "admin" ? "255,68,68" : "0,191,255"},0.15)`
+                      : "transparent",
+                  color: tab === t.key ? t.color : "rgba(255,255,255,0.35)",
                   boxShadow:
-                    tab === t ? "0 0 12px rgba(0,191,255,0.2)" : "none",
+                    tab === t.key
+                      ? `0 0 12px rgba(${t.key === "admin" ? "255,68,68" : "0,191,255"},0.2)`
+                      : "none",
                   border:
-                    tab === t
-                      ? "1px solid rgba(0,191,255,0.3)"
+                    tab === t.key
+                      ? `1px solid rgba(${t.key === "admin" ? "255,68,68" : "0,191,255"},0.3)`
                       : "1px solid transparent",
                 }}
                 data-ocid="auth.tab"
               >
-                {t === "enter" ? "Enter Site" : "Admin"}
+                {t.label}
               </button>
             ))}
           </div>
 
           <AnimatePresence mode="wait">
-            {tab === "enter" ? (
+            {tab === "signin" && (
               <motion.form
-                key="enter"
+                key="signin"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
-                onSubmit={handleEnter}
-                className="flex flex-col gap-5"
+                onSubmit={handleSignIn}
+                className="flex flex-col gap-4"
               >
                 <NeonField
-                  label="Full Name"
-                  type="text"
-                  placeholder="Enter your name"
-                  value={name}
+                  label="Email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={siEmail}
                   onChange={(e) => {
-                    setName(e.target.value);
-                    setNameError("");
+                    setSiEmail(e.target.value);
+                    setSiError("");
                   }}
                   autoFocus
+                  autoComplete="email"
                   data-ocid="auth.input"
                 />
-                {nameError && (
+                <NeonField
+                  label="Password"
+                  type="password"
+                  placeholder="Your password"
+                  value={siPassword}
+                  onChange={(e) => {
+                    setSiPassword(e.target.value);
+                    setSiError("");
+                  }}
+                  autoComplete="current-password"
+                  data-ocid="auth.input"
+                />
+                {siError && (
                   <p
                     className="text-xs"
                     style={{ color: "#FF5555" }}
                     data-ocid="auth.error_state"
                   >
-                    {nameError}
+                    {siError}
                   </p>
                 )}
                 <button
                   type="submit"
-                  className="w-full py-4 rounded-full font-black tracking-[0.25em] uppercase text-sm transition-all duration-300"
+                  disabled={siLoading}
+                  className="w-full py-3.5 rounded-full font-black tracking-[0.25em] uppercase text-sm transition-all duration-300"
                   style={{
                     background:
                       "linear-gradient(135deg, rgba(0,191,255,0.25) 0%, rgba(32,224,230,0.12) 100%)",
                     border: "1.5px solid #00BFFF",
                     color: "#00BFFF",
                     boxShadow: "0 0 30px rgba(0,191,255,0.3)",
+                    cursor: siLoading ? "not-allowed" : "pointer",
+                    opacity: siLoading ? 0.7 : 1,
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 0 50px rgba(0,191,255,0.5)";
-                    e.currentTarget.style.background =
-                      "linear-gradient(135deg, rgba(0,191,255,0.35) 0%, rgba(32,224,230,0.2) 100%)";
+                  data-ocid="auth.submit_button"
+                >
+                  {siLoading ? "Signing In..." : "Sign In"}
+                </button>
+                <p
+                  className="text-center text-xs"
+                  style={{ color: "rgba(255,255,255,0.35)" }}
+                >
+                  No account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setTab("signup")}
+                    style={{ color: "#00BFFF", textDecoration: "underline" }}
+                  >
+                    Create one
+                  </button>
+                </p>
+              </motion.form>
+            )}
+
+            {tab === "signup" && (
+              <motion.form
+                key="signup"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                onSubmit={handleSignUp}
+                className="flex flex-col gap-4"
+              >
+                <NeonField
+                  label="Full Name"
+                  type="text"
+                  placeholder="Your full name"
+                  value={suName}
+                  onChange={(e) => {
+                    setSuName(e.target.value);
+                    setSuError("");
                   }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 0 30px rgba(0,191,255,0.3)";
-                    e.currentTarget.style.background =
-                      "linear-gradient(135deg, rgba(0,191,255,0.25) 0%, rgba(32,224,230,0.12) 100%)";
+                  autoFocus
+                  autoComplete="name"
+                  data-ocid="auth.input"
+                />
+                <NeonField
+                  label="Email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={suEmail}
+                  onChange={(e) => {
+                    setSuEmail(e.target.value);
+                    setSuError("");
+                  }}
+                  autoComplete="email"
+                  data-ocid="auth.input"
+                />
+                <NeonField
+                  label="Password"
+                  type="password"
+                  placeholder="Min. 6 characters"
+                  value={suPassword}
+                  onChange={(e) => {
+                    setSuPassword(e.target.value);
+                    setSuError("");
+                  }}
+                  autoComplete="new-password"
+                  data-ocid="auth.input"
+                />
+                <NeonField
+                  label="Confirm Password"
+                  type="password"
+                  placeholder="Repeat your password"
+                  value={suConfirm}
+                  onChange={(e) => {
+                    setSuConfirm(e.target.value);
+                    setSuError("");
+                  }}
+                  autoComplete="new-password"
+                  data-ocid="auth.input"
+                />
+                {suError && (
+                  <p
+                    className="text-xs"
+                    style={{ color: "#FF5555" }}
+                    data-ocid="auth.error_state"
+                  >
+                    {suError}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={suLoading}
+                  className="w-full py-3.5 rounded-full font-black tracking-[0.25em] uppercase text-sm transition-all duration-300"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(32,224,230,0.25) 0%, rgba(0,191,255,0.12) 100%)",
+                    border: "1.5px solid #20E0E6",
+                    color: "#20E0E6",
+                    boxShadow: "0 0 30px rgba(32,224,230,0.3)",
+                    cursor: suLoading ? "not-allowed" : "pointer",
+                    opacity: suLoading ? 0.7 : 1,
                   }}
                   data-ocid="auth.primary_button"
                 >
-                  Continue
+                  {suLoading ? "Creating Account..." : "Create Account"}
                 </button>
+                <p
+                  className="text-center text-xs"
+                  style={{ color: "rgba(255,255,255,0.35)" }}
+                >
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setTab("signin")}
+                    style={{ color: "#00BFFF", textDecoration: "underline" }}
+                  >
+                    Sign in
+                  </button>
+                </p>
               </motion.form>
-            ) : (
+            )}
+
+            {tab === "admin" && (
               <motion.form
                 key="admin"
                 initial={{ opacity: 0, x: 20 }}
@@ -314,16 +490,16 @@ export default function AuthSplash({ onClose }: { onClose: () => void }) {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
                 onSubmit={handleAdminLogin}
-                className="flex flex-col gap-5"
+                className="flex flex-col gap-4"
               >
                 <NeonField
-                  label="Admin Email"
+                  label="Admin Username"
                   type="text"
-                  placeholder="Email address"
-                  value={adminEmail}
+                  placeholder="Username"
+                  value={adUser}
                   onChange={(e) => {
-                    setAdminEmail(e.target.value);
-                    setAdminError("");
+                    setAdUser(e.target.value);
+                    setAdError("");
                   }}
                   autoFocus
                   data-ocid="auth.input"
@@ -331,41 +507,41 @@ export default function AuthSplash({ onClose }: { onClose: () => void }) {
                 <NeonField
                   label="Password"
                   type="password"
-                  placeholder="Password"
-                  value={adminPassword}
+                  placeholder="Admin password"
+                  value={adPassword}
                   onChange={(e) => {
-                    setAdminPassword(e.target.value);
-                    setAdminError("");
+                    setAdPassword(e.target.value);
+                    setAdError("");
                   }}
                   data-ocid="auth.input"
                 />
-                {adminError && (
+                {adError && (
                   <p
                     className="text-xs"
                     style={{ color: "#FF5555" }}
                     data-ocid="auth.error_state"
                   >
-                    {adminError}
+                    {adError}
                   </p>
                 )}
                 <button
                   type="submit"
-                  disabled={adminLoading}
-                  className="w-full py-4 rounded-full font-black tracking-[0.25em] uppercase text-sm transition-all duration-300 flex items-center justify-center gap-2"
+                  disabled={adLoading}
+                  className="w-full py-3.5 rounded-full font-black tracking-[0.25em] uppercase text-sm transition-all duration-300 flex items-center justify-center gap-2"
                   style={{
-                    background: adminLoading
+                    background: adLoading
                       ? "rgba(255,68,68,0.1)"
                       : "linear-gradient(135deg, rgba(255,68,68,0.25) 0%, rgba(255,100,60,0.12) 100%)",
                     border: "1.5px solid #FF4444",
                     color: "#FF4444",
-                    boxShadow: adminLoading
+                    boxShadow: adLoading
                       ? "none"
                       : "0 0 24px rgba(255,68,68,0.3)",
-                    cursor: adminLoading ? "not-allowed" : "pointer",
+                    cursor: adLoading ? "not-allowed" : "pointer",
                   }}
                   data-ocid="auth.submit_button"
                 >
-                  {adminLoading ? "Verifying..." : "Login as Admin"}
+                  {adLoading ? "Verifying..." : "Login as Admin"}
                 </button>
               </motion.form>
             )}
