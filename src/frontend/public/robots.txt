@@ -1,0 +1,19 @@
+# BMW M5 CS – robots.txt
+# Allow all crawlers full access for maximum SEO ranking
+
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: /sitemap.xml
+
+# Crawl-delay hint for polite bots
+Crawl-delay: 1
+
+# Priority pages for crawlers
+# / – BMW M5 CS Homepage
+# /#performance – BMW M5 CS Specs & Performance
+# /#book-test-drive – Book BMW Test Drive
+# /#customization – BMW M5 CS Configurator
+# /#gallery – BMW M5 CS Gallery
+# /#track – BMW M5 CS On The Track

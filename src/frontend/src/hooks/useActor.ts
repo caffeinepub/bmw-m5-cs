@@ -12,14 +12,17 @@ export function useActor() {
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
       const isAuthenticated = !!identity;
+
       if (!isAuthenticated) {
         return await createActorWithConfig();
       }
+
       const actorOptions = {
         agentOptions: {
           identity,
         },
       };
+
       return await createActorWithConfig(actorOptions);
     },
     staleTime: Number.POSITIVE_INFINITY,

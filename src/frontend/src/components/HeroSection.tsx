@@ -20,13 +20,38 @@ export default function HeroSection() {
       ref={heroRef}
       id="hero"
       className="relative min-h-screen flex items-center overflow-hidden"
+      aria-label="BMW M5 CS – The Ultimate Driving Machine"
+      itemScope
+      itemType="https://schema.org/Car"
     >
+      {/* Hidden SEO metadata for crawlers */}
+      <meta itemProp="name" content="BMW M5 CS" />
+      <meta itemProp="brand" content="BMW" />
+      <meta itemProp="model" content="M5 CS" />
+      <meta
+        itemProp="description"
+        content="BMW M5 CS – 627 HP, 750 Nm torque, 0–100 km/h in 3.0 seconds. The most powerful BMW M5 ever built. Book your BMW test drive today."
+      />
+      <meta
+        itemProp="vehicleEngine"
+        content="S63 4.4-litre V8 Twin-Turbo 627HP"
+      />
+      <meta
+        itemProp="driveWheelConfiguration"
+        content="AllWheelDriveConfiguration"
+      />
+      <meta itemProp="fuelType" content="Gasoline" />
+      <meta itemProp="numberOfDoors" content="4" />
+
       {/* Background image + overlays */}
       <div className="absolute inset-0">
         <img
           src="/assets/generated/bmw-hero.dim_1920x1080.jpg"
-          alt="BMW M5 CS cinematic hero"
+          alt="BMW M5 CS – 627HP Ultimate BMW Performance Sedan. The most powerful BMW M5 ever built."
           className="w-full h-full object-cover"
+          itemProp="image"
+          fetchPriority="high"
+          loading="eager"
         />
         <div
           className="absolute inset-0"
@@ -35,7 +60,6 @@ export default function HeroSection() {
               "linear-gradient(105deg, rgba(11,15,20,0.95) 0%, rgba(11,15,20,0.78) 45%, rgba(11,15,20,0.35) 100%)",
           }}
         />
-        {/* Ambient cyan orb — top right, behind image */}
         <div
           className="absolute top-[-10%] right-[-5%] pointer-events-none"
           style={{
@@ -47,7 +71,6 @@ export default function HeroSection() {
             filter: "blur(40px)",
           }}
         />
-        {/* Section bleed — bottom fade to bg */}
         <div
           className="absolute bottom-0 left-0 right-0"
           style={{
@@ -105,7 +128,7 @@ export default function HeroSection() {
             </span>
           </motion.div>
 
-          {/* Main heading — layered text glow on accent word */}
+          {/* Main heading — h1 for SEO */}
           <motion.h1
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -133,18 +156,24 @@ export default function HeroSection() {
             </span>
           </motion.h1>
 
-          {/* Spec pills */}
+          {/* Spec pills – also read by crawlers as keyword content */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.5 }}
             className="flex items-center gap-4 mb-10 flex-wrap"
+            aria-label="BMW M5 CS key specifications"
           >
-            {["627 HP", "750 Nm", "0–100 in 3.0s"].map((spec, i) => (
+            {[
+              { spec: "627 HP", itemProp: "enginePower" },
+              { spec: "750 Nm", itemProp: "torque" },
+              { spec: "0–100 in 3.0s", itemProp: "speed" },
+            ].map(({ spec, itemProp }, i) => (
               <span key={spec}>
                 <span
                   className="text-sm font-semibold tracking-widest"
                   style={{ color: "#F2F5F7" }}
+                  itemProp={itemProp}
                 >
                   {spec}
                 </span>
@@ -185,6 +214,7 @@ export default function HeroSection() {
                 e.currentTarget.style.background = "transparent";
                 e.currentTarget.style.boxShadow = "none";
               }}
+              aria-label="Explore BMW M5 CS performance specifications"
               data-ocid="hero.primary_button"
             >
               EXPLORE NOW
@@ -207,6 +237,7 @@ export default function HeroSection() {
                 e.currentTarget.style.boxShadow =
                   "0 0 12px rgba(229,57,53,0.6), 0 0 30px rgba(229,57,53,0.25)";
               }}
+              aria-label="Watch BMW M5 CS specifications and performance data"
               data-ocid="hero.secondary_button"
             >
               WATCH SPECS
@@ -224,6 +255,7 @@ export default function HeroSection() {
         onClick={scrollDown}
         className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
         style={{ color: "#7C8796" }}
+        aria-label="Scroll down to explore BMW M5 CS 3D viewer"
         data-ocid="hero.button"
       >
         <span className="text-xs tracking-[0.3em]">SCROLL</span>
@@ -247,6 +279,7 @@ export default function HeroSection() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.8, duration: 0.7 }}
         className="absolute right-8 top-1/2 -translate-y-1/2 hidden xl:flex flex-col gap-6"
+        aria-label="BMW M5 CS performance stats"
       >
         {[
           { value: "627", unit: "HP", label: "Power" },
