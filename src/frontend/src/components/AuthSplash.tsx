@@ -1095,20 +1095,22 @@ export default function AuthSplash({ onClose }: { onClose: () => void }) {
               )}
             </AnimatePresence>
 
-            {/* Skip login button */}
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-xs tracking-widest uppercase transition-all duration-300 group"
-                style={{ color: "rgba(255,255,255,0.3)" }}
-                data-ocid="auth.secondary_button"
-              >
-                <span className="group-hover:text-gray-400 group-hover:underline underline-offset-4 transition-all duration-200">
-                  Skip login for now →
-                </span>
-              </button>
-            </div>
+            {/* Skip login button - hidden on admin tab to prevent loophole */}
+            {tab !== "admin" && (
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="text-xs tracking-widest uppercase transition-all duration-300 group"
+                  style={{ color: "rgba(255,255,255,0.3)" }}
+                  data-ocid="auth.secondary_button"
+                >
+                  <span className="group-hover:text-gray-400 group-hover:underline underline-offset-4 transition-all duration-200">
+                    Skip login for now →
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Corner brackets */}

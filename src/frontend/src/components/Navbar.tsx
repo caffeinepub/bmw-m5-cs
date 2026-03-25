@@ -126,7 +126,7 @@ export default function Navbar({
         </button>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-4">
           {navLinks.map((link) => {
             const active = isActive(link.href);
             return (
@@ -298,7 +298,7 @@ export default function Navbar({
         {/* Mobile hamburger */}
         <button
           type="button"
-          className="md:hidden p-2"
+          className="lg:hidden p-2"
           onClick={() => setMobileOpen(!mobileOpen)}
           data-ocid="nav.toggle"
         >
@@ -336,7 +336,7 @@ export default function Navbar({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="md:hidden overflow-hidden px-6 pb-6 flex flex-col gap-4"
+            className="lg:hidden overflow-hidden px-6 pb-6 flex flex-col gap-4"
             style={{ borderTop: "1px solid rgba(32,224,230,0.1)" }}
           >
             {isLoggedIn && userName && (
