@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google-site-verification" content="SD5QMQOn5H5-0m86xK4U2z9rO4diynfe8tj8SbTP4f8" />
 
     <!-- ============================================================
          PRIMARY SEO META TAGS
@@ -423,11 +424,23 @@
     <link rel="dns-prefetch" href="https://www.instagram.com" />
     <link rel="dns-prefetch" href="https://github.com" />
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+    <!-- Non-render-blocking font load -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Rajdhani:wght@600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Rajdhani:wght@600;700&display=swap" /></noscript>
 
     <!-- Preload critical hero image -->
     <link rel="preload" as="image" href="/assets/generated/bmw-hero.dim_1920x1080.jpg" />
+
+    <!-- Prefetch gallery images (low-priority background downloads) -->
+    <link rel="prefetch" as="image" href="/assets/generated/bmw-gallery-drive.dim_1400x900.jpg" />
+    <link rel="prefetch" as="image" href="/assets/generated/bmw-gallery-front.dim_1400x900.jpg" />
+    <link rel="prefetch" as="image" href="/assets/generated/bmw-gallery-brake.dim_1400x900.jpg" />
+    <link rel="prefetch" as="image" href="/assets/generated/bmw-exterior-side.dim_1200x800.jpg" />
+    <link rel="prefetch" as="image" href="/assets/generated/bmw-engine.dim_1200x800.jpg" />
+    <link rel="prefetch" as="image" href="/assets/generated/bmw-interior.dim_1200x800.jpg" />
+    <link rel="prefetch" as="image" href="/assets/generated/bmw-track.dim_1200x800.jpg" />
+    <!-- Prefetch 3D model in background -->
+    <link rel="prefetch" href="https://raw.githubusercontent.com/ishantpadole96-oss/ISHANT_/refs/heads/main/fff-v1%20(2).glb" />
   </head>
   <body>
     <!-- SEO semantic wrapper -- crawlers read this even before JS loads -->

@@ -17,7 +17,30 @@ export default defineConfig({
   build: {
     emptyOutDir: true,
     sourcemap: false,
-    minify: false,
+    minify: "esbuild",
+    target: "es2020",
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-motion": ["motion"],
+          "vendor-three": ["three", "@react-three/fiber", "@react-three/drei"],
+          "vendor-radix": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-select",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-scroll-area",
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-checkbox",
+            "@radix-ui/react-progress",
+            "@radix-ui/react-slider",
+          ],
+          "vendor-icons": ["lucide-react", "react-icons"],
+        },
+      },
+    },
   },
   css: {
     postcss: "./postcss.config.js",

@@ -1,24 +1,58 @@
 import { AnimatePresence } from "motion/react";
-import { useEffect, useState } from "react";
-import AdminPanel from "./components/AdminPanel";
+import { Suspense, lazy, useEffect, useState } from "react";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// Eagerly loaded (critical path)
 import AuthSplash from "./components/AuthSplash";
-import BookTestDriveSection from "./components/BookTestDriveSection";
-import CarCustomizationSection from "./components/CarCustomizationSection";
 import CustomCursor from "./components/CustomCursor";
-import DesignShowcase from "./components/DesignShowcase";
-import EngineSoundSection from "./components/EngineSoundSection";
 import ErrorBoundary from "./components/ErrorBoundary";
-import Footer from "./components/Footer";
-import GallerySection from "./components/GallerySection";
 import HeroSection from "./components/HeroSection";
 import LoadingScreen from "./components/LoadingScreen";
 import Navbar from "./components/Navbar";
-import PerformanceSection from "./components/PerformanceSection";
-import ProfilePage from "./components/ProfilePage";
-import TechSection from "./components/TechSection";
-import ThreeDSection from "./components/ThreeDSection";
-import TrackSection from "./components/TrackSection";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// Lazily loaded (below the fold or conditionally shown)
+const AdminPanel = lazy(() => import("./components/AdminPanel"));
+const BookTestDriveSection = lazy(
+  () => import("./components/BookTestDriveSection"),
+);
+const CarCustomizationSection = lazy(
+  () => import("./components/CarCustomizationSection"),
+);
+const DesignShowcase = lazy(() => import("./components/DesignShowcase"));
+const EngineSoundSection = lazy(
+  () => import("./components/EngineSoundSection"),
+);
+const Footer = lazy(() => import("./components/Footer"));
+const GallerySection = lazy(() => import("./components/GallerySection"));
+const PerformanceSection = lazy(
+  () => import("./components/PerformanceSection"),
+);
+const ProfilePage = lazy(() => import("./components/ProfilePage"));
+const TechSection = lazy(() => import("./components/TechSection"));
+const ThreeDSection = lazy(() => import("./components/ThreeDSection"));
+const TrackSection = lazy(() => import("./components/TrackSection"));
+
+// Gallery images to prefetch after hero loads
+const GALLERY_IMAGES = [
+  "/assets/generated/bmw-gallery-drive.dim_1400x900.jpg",
+  "/assets/generated/bmw-gallery-front.dim_1400x900.jpg",
+  "/assets/generated/bmw-gallery-brake.dim_1400x900.jpg",
+  "/assets/generated/bmw-exterior-side.dim_1200x800.jpg",
+  "/assets/generated/bmw-engine.dim_1200x800.jpg",
+  "/assets/generated/bmw-interior.dim_1200x800.jpg",
+  "/assets/generated/bmw-track.dim_1200x800.jpg",
+];
+
+function prefetchImages(urls: string[]) {
+  for (const url of urls) {
+    const img = new Image();
+    img.src = url;
+  }
+}
+
+function SectionFallback() {
+  return <div style={{ minHeight: "200px", backgroundColor: "#0B0F14" }} />;
+}
 
 function AppInner() {
   const [loading, setLoading] = useState(true);
@@ -29,9 +63,18 @@ function AppInner() {
   const { logout } = useAuth();
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2800);
+    const timer = setTimeout(() => setLoading(false), 1800);
     return () => clearTimeout(timer);
   }, []);
+
+  // Prefetch all gallery + design images after auth splash closes
+  useEffect(() => {
+    if (authDone) {
+      // Small delay so we don't compete with the initial render
+      const t = setTimeout(() => prefetchImages(GALLERY_IMAGES), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [authDone]);
 
   function handleSignOut() {
     logout();
@@ -61,19 +104,23 @@ function AppInner() {
 
       <AnimatePresence>
         {adminPanelOpen && (
-          <AdminPanel onClose={() => setAdminPanelOpen(false)} />
+          <Suspense fallback={null}>
+            <AdminPanel onClose={() => setAdminPanelOpen(false)} />
+          </Suspense>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {profileOpen && authDone && !loading && (
-          <ProfilePage
-            onClose={() => setProfileOpen(false)}
-            onOpenAdmin={() => {
-              setProfileOpen(false);
-              setAdminPanelOpen(true);
-            }}
-          />
+          <Suspense fallback={null}>
+            <ProfilePage
+              onClose={() => setProfileOpen(false)}
+              onOpenAdmin={() => {
+                setProfileOpen(false);
+                setAdminPanelOpen(true);
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
@@ -87,18 +134,38 @@ function AppInner() {
           <main>
             <HeroSection />
             <ErrorBoundary>
-              <ThreeDSection />
+              <Suspense fallback={<SectionFallback />}>
+                <ThreeDSection />
+              </Suspense>
             </ErrorBoundary>
-            <PerformanceSection />
-            <TrackSection />
-            <DesignShowcase />
-            <TechSection />
-            <EngineSoundSection />
-            <GallerySection />
-            <CarCustomizationSection onConfigChange={handleConfigChange} />
-            <BookTestDriveSection customizationSpec={customizationSpec} />
+            <Suspense fallback={<SectionFallback />}>
+              <PerformanceSection />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <TrackSection />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <DesignShowcase />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <TechSection />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <EngineSoundSection />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <GallerySection />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <CarCustomizationSection onConfigChange={handleConfigChange} />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <BookTestDriveSection customizationSpec={customizationSpec} />
+            </Suspense>
           </main>
-          <Footer />
+          <Suspense fallback={null}>
+            <Footer />
+          </Suspense>
         </>
       )}
     </div>
