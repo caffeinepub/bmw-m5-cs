@@ -24,6 +24,7 @@ const SECTION_IDS = [
 ];
 
 interface NavbarProps {
+  onOpenAuth?: () => void;
   onOpenAdmin?: () => void;
   onSignOut?: () => void;
   onOpenProfile?: () => void;
@@ -33,6 +34,7 @@ export default function Navbar({
   onOpenAdmin,
   onSignOut,
   onOpenProfile,
+  onOpenAuth,
 }: NavbarProps) {
   const { isLoggedIn, isAdmin, userName } = useAuth();
   const [scrolled, setScrolled] = useState(false);
@@ -387,6 +389,27 @@ export default function Navbar({
             >
               BOOK TEST DRIVE
             </motion.button>
+            {!isLoggedIn && (
+              <motion.button
+                type="button"
+                onClick={() => {
+                  onOpenAuth?.();
+                  setMobileOpen(false);
+                }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: (navLinks.length + 0.3) * 0.05 }}
+                className="mt-2 px-5 py-2.5 rounded-full text-sm font-bold tracking-widest flex items-center gap-2"
+                style={{
+                  background: "rgba(32,224,230,0.08)",
+                  border: "1.5px solid #20E0E6",
+                  color: "#20E0E6",
+                }}
+                data-ocid="nav.secondary_button"
+              >
+                SIGN IN
+              </motion.button>
+            )}
             {isLoggedIn && (
               <motion.button
                 type="button"

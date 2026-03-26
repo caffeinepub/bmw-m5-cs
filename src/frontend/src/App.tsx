@@ -32,15 +32,21 @@ const TechSection = lazy(() => import("./components/TechSection"));
 const ThreeDSection = lazy(() => import("./components/ThreeDSection"));
 const TrackSection = lazy(() => import("./components/TrackSection"));
 
-// Gallery images to prefetch after hero loads
+// Gallery images to prefetch after hero loads (must match actual filenames)
 const GALLERY_IMAGES = [
   "/assets/generated/bmw-gallery-drive.dim_1400x900.jpg",
   "/assets/generated/bmw-gallery-front.dim_1400x900.jpg",
   "/assets/generated/bmw-gallery-brake.dim_1400x900.jpg",
   "/assets/generated/bmw-exterior-side.dim_1200x800.jpg",
+  "/assets/generated/bmw-exterior-rear.dim_1200x800.jpg",
   "/assets/generated/bmw-engine.dim_1200x800.jpg",
-  "/assets/generated/bmw-interior.dim_1200x800.jpg",
-  "/assets/generated/bmw-track.dim_1200x800.jpg",
+  "/assets/generated/bmw-interior-cockpit.dim_1200x800.jpg",
+  "/assets/generated/bmw-interior-seats.dim_1200x800.jpg",
+  "/assets/generated/bmw-track-burnout.dim_1400x800.jpg",
+  "/assets/generated/bmw-track-launch.dim_1400x800.jpg",
+  "/assets/generated/bmw-track-drag.dim_1400x800.jpg",
+  "/assets/generated/bmw-track-review.dim_1400x800.jpg",
+  "/assets/generated/bmw-hero.dim_1920x1080.jpg",
 ];
 
 function prefetchImages(urls: string[]) {
@@ -70,7 +76,6 @@ function AppInner() {
   // Prefetch all gallery + design images after auth splash closes
   useEffect(() => {
     if (authDone) {
-      // Small delay so we don't compete with the initial render
       const t = setTimeout(() => prefetchImages(GALLERY_IMAGES), 1500);
       return () => clearTimeout(t);
     }
@@ -130,6 +135,7 @@ function AppInner() {
             onOpenAdmin={() => setAdminPanelOpen(true)}
             onSignOut={handleSignOut}
             onOpenProfile={() => setProfileOpen(true)}
+            onOpenAuth={() => setAuthDone(false)}
           />
           <main>
             <HeroSection />

@@ -106,18 +106,25 @@ function NeonTextarea({
   );
 }
 
-/** Retry a promise-returning function up to maxAttempts times with exponential backoff */
-async function withRetry<T>(
-  fn: () => Promise<T>,
+/**
+ * Retry a promise-returning function up to maxAttempts times with exponential backoff.
+ * Each attempt receives a fresh actor to avoid reusing a broken connection.
+ */
+async function submitWithRetry(
+  submitFn: (actor: backendInterface) => Promise<void>,
   maxAttempts = 3,
   baseDelayMs = 800,
-): Promise<T> {
+): Promise<void> {
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      return await fn();
+      // Always create a fresh actor on each attempt — never reuse a potentially broken one
+      const actor = await createActorWithConfig();
+      await submitFn(actor);
+      return; // success
     } catch (err) {
       lastError = err;
+      console.error(`Booking attempt ${attempt + 1} failed:`, err);
       if (attempt < maxAttempts - 1) {
         await new Promise((r) => setTimeout(r, baseDelayMs * 2 ** attempt));
       }
@@ -130,7 +137,8 @@ export default function BookTestDriveSection({
   customizationSpec,
 }: BookTestDriveSectionProps) {
   const { isLoggedIn } = useAuth();
-  const actorRef = useRef<backendInterface | null>(null);
+  // Keep a warm actor ref just for UX (pre-warm so first submit is fast)
+  const warmActorRef = useRef<backendInterface | null>(null);
 
   const [form, setForm] = useState<FormData>({
     name: "",
@@ -147,14 +155,14 @@ export default function BookTestDriveSection({
   const [showInlineAuth, setShowInlineAuth] = useState(false);
   const [specBannerDismissed, setSpecBannerDismissed] = useState(false);
 
-  // Pre-warm the actor in background so submission is instant
+  // Pre-warm the actor in background so first submission is fast
   useEffect(() => {
     createActorWithConfig()
       .then((a) => {
-        actorRef.current = a;
+        warmActorRef.current = a;
       })
       .catch(() => {
-        /* will retry on submit */
+        // Will be created fresh on submit
       });
   }, []);
 
@@ -180,16 +188,13 @@ export default function BookTestDriveSection({
     }
     setError("");
     setLoading(true);
+
+    const combined = form.configurationSpec
+      ? `${form.configurationSpec}\n\n--- User Message ---\n${form.message}`
+      : form.message;
+
     try {
-      await withRetry(async () => {
-        // Use cached actor or create fresh one
-        const actor = actorRef.current ?? (await createActorWithConfig());
-        actorRef.current = actor;
-
-        const combined = form.configurationSpec
-          ? `${form.configurationSpec}\n\n--- User Message ---\n${form.message}`
-          : form.message;
-
+      await submitWithRetry(async (actor) => {
         await actor.submitBooking(
           form.name,
           form.email,
@@ -199,12 +204,14 @@ export default function BookTestDriveSection({
           combined,
         );
       });
+      // Invalidate the warm actor after successful use
+      warmActorRef.current = null;
       setSuccess(true);
     } catch (err) {
-      console.error("Booking error:", err);
-      // On error, clear cached actor so next attempt creates fresh
-      actorRef.current = null;
-      setError("Something went wrong. Please try again.");
+      console.error("All booking attempts failed:", err);
+      warmActorRef.current = null;
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(`Booking failed: ${message.slice(0, 120)}. Please try again.`);
     } finally {
       setLoading(false);
     }
@@ -212,6 +219,7 @@ export default function BookTestDriveSection({
 
   function handleReset() {
     setSuccess(false);
+    setError("");
     setForm({
       name: "",
       email: "",

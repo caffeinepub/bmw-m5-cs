@@ -13,7 +13,7 @@ import * as THREE from "three";
 
 // Direct raw URL – no redirect, CORS-friendly
 const MODEL_URL =
-  "https://raw.githubusercontent.com/ishantpadole96-oss/ISHANT_/main/fff-v1%20(2).glb";
+  "https://cdn.jsdelivr.net/gh/ishantpadole96-oss/ISHANT_@main/fff-v1%20(2).glb";
 
 useGLTF.preload(MODEL_URL);
 

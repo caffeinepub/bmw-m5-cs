@@ -5,73 +5,322 @@ type EngineState = "stopped" | "starting" | "running";
 
 const BAR_KEYS = ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7"];
 
+// Build a waveshaper curve for asymmetric harmonic distortion (engine grunt)
+function makeDistortionCurve(amount: number): Float32Array {
+  const n = 256;
+  const buf = new ArrayBuffer(n * 4);
+  const curve = new Float32Array(buf);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    // Asymmetric soft-clip: more saturation on positive half (like a piston)
+    if (x >= 0) {
+      curve[i] = 1 - Math.exp(-amount * x);
+    } else {
+      curve[i] = -1 + Math.exp(amount * 0.7 * x);
+    }
+  }
+  return curve;
+}
+
+// Create a burst of white noise (for crankle pops and mechanical texture)
+function createNoiseBuffer(
+  ctx: AudioContext,
+  durationSec: number,
+): AudioBuffer {
+  const sampleRate = ctx.sampleRate;
+  const frameCount = Math.ceil(sampleRate * durationSec);
+  const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < frameCount; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  return buffer;
+}
+
 export default function EngineSoundSection() {
   const [engineState, setEngineState] = useState<EngineState>("stopped");
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const oscillatorsRef = useRef<OscillatorNode[]>([]);
+  const noiseSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopEngine = useCallback(() => {
-    if (gainNodeRef.current && audioCtxRef.current) {
-      gainNodeRef.current.gain.exponentialRampToValueAtTime(
-        0.001,
-        audioCtxRef.current.currentTime + 0.5,
-      );
+    const ctx = audioCtxRef.current;
+    const master = gainNodeRef.current;
+    if (master && ctx) {
+      // Brief frequency sag then fade — engine shutdown feel
+      for (const osc of oscillatorsRef.current) {
+        try {
+          osc.frequency.cancelScheduledValues(ctx.currentTime);
+          osc.frequency.setValueAtTime(osc.frequency.value, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 1.2);
+        } catch {}
+      }
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+      master.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
     }
-    setTimeout(() => {
+    if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+    stopTimerRef.current = setTimeout(() => {
       for (const osc of oscillatorsRef.current) {
         try {
           osc.stop();
         } catch {}
       }
       oscillatorsRef.current = [];
+      for (const ns of noiseSourcesRef.current) {
+        try {
+          ns.stop();
+        } catch {}
+      }
+      noiseSourcesRef.current = [];
       if (audioCtxRef.current) {
         audioCtxRef.current.close();
         audioCtxRef.current = null;
       }
-    }, 600);
+    }, 1400);
     setEngineState("stopped");
   }, []);
 
   const startEngine = useCallback(() => {
     setEngineState("starting");
+
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
+    const t = ctx.currentTime;
+
+    // ─── Master gain ────────────────────────────────────────────────────────
     const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.001, ctx.currentTime);
-    masterGain.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + 0.5);
-    masterGain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 1.5);
+    masterGain.gain.setValueAtTime(0.001, t);
     masterGain.connect(ctx.destination);
     gainNodeRef.current = masterGain;
 
-    const configs: {
-      freq: number;
-      type: OscillatorType;
-      detune: number;
-      gainVal: number;
-    }[] = [
-      { freq: 80, type: "sawtooth", detune: 0, gainVal: 0.6 },
-      { freq: 160, type: "sawtooth", detune: 5, gainVal: 0.4 },
-      { freq: 240, type: "sawtooth", detune: -5, gainVal: 0.25 },
-      { freq: 40, type: "sawtooth", detune: 0, gainVal: 0.5 },
-    ];
+    // ─── Waveshaper distortion (engine grunt / grit) ─────────────────────────
+    const waveshaper = ctx.createWaveShaper();
+    waveshaper.curve = makeDistortionCurve(3.5) as Float32Array<ArrayBuffer>;
+    waveshaper.oversample = "4x";
+    waveshaper.connect(masterGain);
 
-    oscillatorsRef.current = configs.map(({ freq, type, detune, gainVal }) => {
-      const osc = ctx.createOscillator();
-      const oscGain = ctx.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      osc.detune.value = detune;
-      oscGain.gain.value = gainVal;
-      osc.connect(oscGain);
-      oscGain.connect(masterGain);
-      osc.start();
-      return osc;
-    });
+    // ─── Low-pass filter for V8 chug ─────────────────────────────────────────
+    const lpFilter = ctx.createBiquadFilter();
+    lpFilter.type = "lowpass";
+    lpFilter.frequency.setValueAtTime(600, t);
+    lpFilter.Q.value = 1.2;
+    lpFilter.connect(waveshaper);
 
-    const baseOsc = oscillatorsRef.current[0];
-    baseOsc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.8);
-    baseOsc.frequency.exponentialRampToValueAtTime(85, ctx.currentTime + 1.8);
+    // ─── Fundamental V8 firing oscillator ────────────────────────────────────
+    // V8 fires 4x per rev; idle 750 RPM → 750/60*4 = 50 Hz
+    const fundOsc = ctx.createOscillator();
+    fundOsc.type = "sawtooth";
+    fundOsc.frequency.setValueAtTime(8, t);
+    const fundGain = ctx.createGain();
+    fundGain.gain.setValueAtTime(0.001, t);
+    fundOsc.connect(fundGain);
+    fundGain.connect(lpFilter);
+    fundOsc.start(t);
+
+    // ─── 2nd harmonic ────────────────────────────────────────────────────────
+    const harm2 = ctx.createOscillator();
+    harm2.type = "sawtooth";
+    harm2.frequency.setValueAtTime(16, t);
+    harm2.detune.value = 3;
+    const harm2Gain = ctx.createGain();
+    harm2Gain.gain.setValueAtTime(0.001, t);
+    harm2.connect(harm2Gain);
+    harm2Gain.connect(lpFilter);
+    harm2.start(t);
+
+    // ─── 4th harmonic ────────────────────────────────────────────────────────
+    const harm4 = ctx.createOscillator();
+    harm4.type = "sawtooth";
+    harm4.frequency.setValueAtTime(32, t);
+    harm4.detune.value = -3;
+    const harm4Gain = ctx.createGain();
+    harm4Gain.gain.setValueAtTime(0.001, t);
+    harm4.connect(harm4Gain);
+    harm4Gain.connect(lpFilter);
+    harm4.start(t);
+
+    // ─── Exhaust resonance oscillator (~160 Hz at idle) ───────────────────────
+    const exhaustOsc = ctx.createOscillator();
+    exhaustOsc.type = "sine";
+    exhaustOsc.frequency.setValueAtTime(20, t);
+    exhaustOsc.detune.value = -5;
+    const exhaustGain = ctx.createGain();
+    exhaustGain.gain.setValueAtTime(0.001, t);
+    exhaustOsc.connect(exhaustGain);
+    exhaustGain.connect(masterGain);
+    exhaustOsc.start(t);
+
+    // ─── Mechanical noise layer (bandpass ~120 Hz, continuous) ────────────────
+    const mechNoiseBuf = createNoiseBuffer(ctx, 12);
+    const mechNoise = ctx.createBufferSource();
+    mechNoise.buffer = mechNoiseBuf;
+    mechNoise.loop = true;
+    const mechBP = ctx.createBiquadFilter();
+    mechBP.type = "bandpass";
+    mechBP.frequency.setValueAtTime(120, t);
+    mechBP.Q.value = 2;
+    const mechNoiseGain = ctx.createGain();
+    mechNoiseGain.gain.setValueAtTime(0.0, t);
+    mechNoise.connect(mechBP);
+    mechBP.connect(mechNoiseGain);
+    mechNoiseGain.connect(masterGain);
+    mechNoise.start(t);
+    noiseSourcesRef.current.push(mechNoise);
+
+    // Store oscillators for cleanup
+    oscillatorsRef.current = [fundOsc, harm2, harm4, exhaustOsc];
+
+    // Helper: set all osc frequencies scaled by RPM
+    const setRpm = (rpm: number, when: number, rampDur: number) => {
+      const firingFreq = (rpm / 60) * 4;
+      fundOsc.frequency.exponentialRampToValueAtTime(
+        Math.max(firingFreq, 1),
+        when + rampDur,
+      );
+      harm2.frequency.exponentialRampToValueAtTime(
+        Math.max(firingFreq * 2, 1),
+        when + rampDur,
+      );
+      harm4.frequency.exponentialRampToValueAtTime(
+        Math.max(firingFreq * 4, 1),
+        when + rampDur,
+      );
+      exhaustOsc.frequency.exponentialRampToValueAtTime(
+        Math.max(firingFreq * 3.2, 1),
+        when + rampDur,
+      );
+      lpFilter.frequency.exponentialRampToValueAtTime(
+        Math.max(400 + (rpm / 5500) * 3600, 1),
+        when + rampDur,
+      );
+    };
+
+    // ── Phase 1 (0 – 0.4s): Crank burst ──────────────────────────────────────
+    masterGain.gain.exponentialRampToValueAtTime(0.18, t + 0.4);
+    fundGain.gain.exponentialRampToValueAtTime(0.7, t + 0.15);
+    harm2Gain.gain.exponentialRampToValueAtTime(0.4, t + 0.15);
+    harm4Gain.gain.exponentialRampToValueAtTime(0.18, t + 0.15);
+    exhaustGain.gain.exponentialRampToValueAtTime(0.12, t + 0.2);
+    mechNoiseGain.gain.exponentialRampToValueAtTime(0.08, t + 0.15);
+    // crank spin-up noise burst
+    (() => {
+      const crankBuf = createNoiseBuffer(ctx, 0.5);
+      const crankSrc = ctx.createBufferSource();
+      crankSrc.buffer = crankBuf;
+      const crankHP = ctx.createBiquadFilter();
+      crankHP.type = "highpass";
+      crankHP.frequency.value = 300;
+      const crankGain = ctx.createGain();
+      crankGain.gain.setValueAtTime(0.25, t);
+      crankGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+      crankSrc.connect(crankHP);
+      crankHP.connect(crankGain);
+      crankGain.connect(masterGain);
+      crankSrc.start(t);
+      crankSrc.stop(t + 0.5);
+      noiseSourcesRef.current.push(crankSrc);
+    })();
+    setRpm(300, t, 0.4);
+
+    // ── Phase 2 (0.4 – 0.8s): Ignition catch — spike to 2500 RPM ─────────────
+    masterGain.gain.setValueAtTime(0.18, t + 0.4);
+    masterGain.gain.exponentialRampToValueAtTime(0.42, t + 0.65);
+    setRpm(2500, t + 0.4, 0.25);
+
+    // ── Phase 3 (0.8 – 2.0s): Settle to idle 750 RPM ─────────────────────────
+    masterGain.gain.exponentialRampToValueAtTime(0.28, t + 2.0);
+    setRpm(750, t + 0.8, 1.2);
+
+    // ── Phase 4 (2.0 – 3.5s): Hold idle with lumpy V8 burble ─────────────────
+    const burbleSteps = 6;
+    for (let i = 0; i < burbleSteps; i++) {
+      const when = t + 2.0 + i * (1.5 / burbleSteps);
+      const rpm = 750 + (i % 2 === 0 ? 30 : -30);
+      fundOsc.frequency.setValueAtTime((rpm / 60) * 4, when);
+      harm2.frequency.setValueAtTime((rpm / 60) * 8, when);
+      harm4.frequency.setValueAtTime((rpm / 60) * 16, when);
+      exhaustOsc.frequency.setValueAtTime((rpm / 60) * 12.8, when);
+    }
+    masterGain.gain.setValueAtTime(0.28, t + 3.5);
+
+    // ── Phase 5 (3.5 – 5.5s): Aggressive rev-up to 5500 RPM ──────────────────
+    masterGain.gain.exponentialRampToValueAtTime(0.52, t + 5.2);
+    setRpm(5500, t + 3.5, 2.0);
+    lpFilter.frequency.exponentialRampToValueAtTime(4000, t + 5.5);
+    harm4Gain.gain.exponentialRampToValueAtTime(0.32, t + 5.2);
+    mechNoiseGain.gain.exponentialRampToValueAtTime(0.14, t + 5.0);
+
+    // ── Phase 6 (5.5 – 6.5s): Hold at high RPM ───────────────────────────────
+    for (let i = 0; i < 4; i++) {
+      const when = t + 5.5 + i * 0.25;
+      const rpm = 5500 + (i % 2 === 0 ? 80 : -80);
+      fundOsc.frequency.setValueAtTime((rpm / 60) * 4, when);
+      harm2.frequency.setValueAtTime((rpm / 60) * 8, when);
+      harm4.frequency.setValueAtTime((rpm / 60) * 16, when);
+      exhaustOsc.frequency.setValueAtTime((rpm / 60) * 12.8, when);
+    }
+    masterGain.gain.setValueAtTime(0.52, t + 6.5);
+
+    // ── Phase 7 (6.5 – 8.0s): Rev drop back to idle ──────────────────────────
+    masterGain.gain.exponentialRampToValueAtTime(0.28, t + 8.0);
+    setRpm(750, t + 6.5, 1.5);
+    lpFilter.frequency.exponentialRampToValueAtTime(600, t + 8.0);
+    harm4Gain.gain.exponentialRampToValueAtTime(0.18, t + 8.0);
+    mechNoiseGain.gain.exponentialRampToValueAtTime(0.07, t + 8.0);
+
+    // ── Exhaust crackle pops at rev drop (6.5 – 7.5s) ────────────────────────
+    const crackTimes = [6.5, 6.8, 7.1, 7.35, 7.6];
+    for (const ct of crackTimes) {
+      const popBuf = createNoiseBuffer(ctx, 0.08);
+      const popSrc = ctx.createBufferSource();
+      popSrc.buffer = popBuf;
+      const popHP = ctx.createBiquadFilter();
+      popHP.type = "highpass";
+      popHP.frequency.value = 800;
+      const popBP = ctx.createBiquadFilter();
+      popBP.type = "peaking";
+      popBP.frequency.value = 1800;
+      popBP.gain.value = 8;
+      const popGain = ctx.createGain();
+      const popStart = t + ct;
+      popGain.gain.setValueAtTime(0.0, popStart);
+      popGain.gain.linearRampToValueAtTime(0.38, popStart + 0.01);
+      popGain.gain.exponentialRampToValueAtTime(0.001, popStart + 0.08);
+      popSrc.connect(popHP);
+      popHP.connect(popBP);
+      popBP.connect(popGain);
+      popGain.connect(masterGain);
+      popSrc.start(popStart);
+      popSrc.stop(popStart + 0.1);
+      noiseSourcesRef.current.push(popSrc);
+    }
+
+    // ── Phase 8 (8.0+): Continuous idle burble until STOP ────────────────────
+    const scheduleIdleBurble = () => {
+      if (!audioCtxRef.current) return;
+      const now = audioCtxRef.current.currentTime;
+      for (let i = 0; i < 8; i++) {
+        const when = now + i * 0.18;
+        const rpm = 750 + (Math.random() * 60 - 30);
+        const ff = (rpm / 60) * 4;
+        fundOsc.frequency.setValueAtTime(Math.max(ff, 1), when);
+        harm2.frequency.setValueAtTime(Math.max(ff * 2, 1), when);
+        harm4.frequency.setValueAtTime(Math.max(ff * 4, 1), when);
+        exhaustOsc.frequency.setValueAtTime(Math.max(ff * 3.2, 1), when);
+      }
+    };
+    const burbleInterval = setInterval(() => {
+      if (!audioCtxRef.current) {
+        clearInterval(burbleInterval);
+        return;
+      }
+      scheduleIdleBurble();
+    }, 1200);
+    setTimeout(() => scheduleIdleBurble(), (t + 8.0 - ctx.currentTime) * 1000);
+
     setTimeout(() => setEngineState("running"), 800);
   }, []);
 

@@ -198,6 +198,7 @@ export default function ProfilePage({
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [bookingCount, setBookingCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(false);
 
@@ -208,6 +209,9 @@ export default function ProfilePage({
       Promise.all([actor.getAllBookings(), actor.getAllComments()])
         .then(([bk, cm]) => {
           setBookingCount(bk.length);
+          setPendingCount(
+            bk.filter((b: { status: string }) => b.status === "pending").length,
+          );
           setCommentCount(cm.length);
         })
         .finally(() => setDataLoading(false));
@@ -263,7 +267,7 @@ export default function ProfilePage({
 
   const statValues: Record<string, number> = {
     bookings: bookingCount,
-    pending: bookingCount,
+    pending: pendingCount,
     comments: commentCount,
   };
 
